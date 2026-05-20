@@ -1,0 +1,199 @@
+You are a senior full-stack engineer.
+
+Build a minimal but functional MVP for a digital marketplace called "Faed Platform".
+
+The platform connects fashion suppliers who have surplus inventory (deadstock) with consumers who want to buy discounted products.
+
+The goal is to build a working MVP marketplace.
+
+Use the following stack:
+
+Frontend:
+Next.js (React)
+Tailwind CSS
+RTL support for Arabic
+
+Backend:
+Supabase (database + authentication)
+
+Hosting:
+Replit environment
+
+Database:
+PostgreSQL (via Supabase)
+
+Core concept:
+Suppliers upload surplus products.
+Consumers browse and purchase products.
+
+--------------------------------------------------
+
+USER ROLES
+
+1) Buyer (consumer)
+2) Supplier (seller)
+3) Admin
+
+--------------------------------------------------
+
+MAIN FEATURES (MVP ONLY)
+
+1) Home Page
+Display featured products.
+Show product cards with:
+- image
+- title
+- price
+- original price
+- discount tag
+- button "View Product"
+
+2) Product Page
+Show full product details:
+- images
+- description
+- price
+- original price
+- available sizes
+- quantity
+- supplier name
+- "Add to Cart" button
+
+3) Product Listing Page
+Filter products by:
+- category
+- price
+- size
+- brand
+
+4) Cart
+User can:
+- add items
+- remove items
+- update quantity
+- proceed to checkout
+
+5) Checkout
+Collect:
+- name
+- phone
+- address
+- payment option
+
+For MVP simulate payment (no real gateway required).
+
+6) Supplier Dashboard
+Suppliers can:
+
+- login
+- upload products
+- edit products
+- delete products
+- view received orders
+
+Product upload fields:
+- product name
+- category
+- images
+- description
+- original price
+- surplus price
+- quantity
+- reason for discount
+  (overstock / minor defect / end of season)
+
+7) Admin Panel
+Admin can:
+- approve suppliers
+- remove products
+- view orders
+- view suppliers
+
+--------------------------------------------------
+
+DATABASE STRUCTURE
+
+Tables:
+
+users
+- id
+- name
+- email
+- role (buyer / supplier / admin)
+
+suppliers
+- id
+- business_name
+- verification_status
+
+products
+- id
+- supplier_id
+- name
+- description
+- category
+- price
+- original_price
+- quantity
+- image_url
+- discount_reason
+
+orders
+- id
+- user_id
+- status
+- total_price
+- created_at
+
+order_items
+- id
+- order_id
+- product_id
+- quantity
+- price
+
+--------------------------------------------------
+
+DESIGN REQUIREMENTS
+
+- Mobile-first design
+- Clean modern UI
+- RTL Arabic layout
+- Use Tailwind CSS
+- Product grid layout
+- Dashboard sidebar for suppliers
+
+--------------------------------------------------
+
+PROJECT STRUCTURE
+
+/pages
+/home
+/products
+/product/[id]
+/cart
+/checkout
+/supplier-dashboard
+/admin
+
+/components
+ProductCard
+Navbar
+Footer
+CartItem
+UploadProductForm
+
+--------------------------------------------------
+
+GOAL
+
+Deliver a clean working MVP marketplace that allows:
+
+Suppliers → upload surplus fashion products  
+Consumers → browse and purchase products  
+
+Focus on functionality over complexity.
+
+Do not implement advanced features like AI recommendations, mobile apps, or advertising systems.
+
+Keep the architecture simple and scalable.

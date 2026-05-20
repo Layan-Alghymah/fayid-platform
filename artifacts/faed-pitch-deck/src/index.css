@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  --teal-primary: #195155;
+  --teal-deep: #0F3D4F;
+  --teal-light: #217a82;
+  --teal-pale: #d4eaec;
+  --teal-mist: #eaf4f5;
+  --gold-accent: #c9a84c;
+  --gold-light: #e8c97a;
+  --off-white: #f5f2ee;
+  --warm-white: #faf8f4;
+  --dark-text: #0d1f24;
+
+  font-family: "Cairo", "IBM Plex Sans", system-ui, sans-serif;
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0F3D4F;
+  color: #f5f2ee;
+}
+
+.slide {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.font-display {
+  font-family: "Cairo", sans-serif;
+}
+
+.font-body {
+  font-family: "IBM Plex Sans", sans-serif;
+}

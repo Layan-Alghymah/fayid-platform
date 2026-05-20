@@ -1,0 +1,2 @@
+DATABASE_URL=postgresql://postgres:FallQ1882@9@db.ozvkqjkvflwuauwufdzb.supabase.co:5432/postgres
+JWT_SECRET=d337af3e-c8a5-4f2e-b5ca-1f36a6038a77

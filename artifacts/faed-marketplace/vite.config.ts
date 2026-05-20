@@ -1,0 +1,93 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
+
+const port = Number(process.env.PORT ?? "5173");
+const basePath = process.env.BASE_PATH ?? "/";
+
+export default defineConfig({
+  base: basePath,
+
+  plugins: [react(), tailwindcss()],
+
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "src"),
+
+      "@assets": path.resolve(
+        import.meta.dirname,
+        "..",
+        "..",
+        "attached_assets"
+      ),
+
+      "@workspace/api-client-react": path.resolve(
+        import.meta.dirname,
+        "../../lib/api-client-react/src/index.ts"
+      ),
+
+      "@workspace/api-client-react.schemas": path.resolve(
+        import.meta.dirname,
+        "../../lib/api-client-react/src/generated/api.schemas.ts"
+      ),
+
+      "@tanstack/react-query": path.resolve(
+        import.meta.dirname,
+        "node_modules/@tanstack/react-query"
+      ),
+
+      react: path.resolve(
+        import.meta.dirname,
+        "node_modules/react"
+      ),
+
+      "react-dom": path.resolve(
+        import.meta.dirname,
+        "node_modules/react-dom"
+      ),
+    },
+
+    dedupe: [
+      "react",
+      "react-dom",
+      "@tanstack/react-query",
+    ],
+  },
+
+  root: path.resolve(import.meta.dirname),
+
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist"),
+    emptyOutDir: true,
+  },
+
+  server: {
+    port,
+    host: "0.0.0.0",
+
+    allowedHosts: true,
+
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+    },
+
+    fs: {
+      strict: true,
+      deny: ["**/.*"],
+
+      allow: [
+        path.resolve(import.meta.dirname, "../.."),
+      ],
+    },
+  },
+
+  preview: {
+    port,
+    host: "0.0.0.0",
+    allowedHosts: true,
+  },
+});

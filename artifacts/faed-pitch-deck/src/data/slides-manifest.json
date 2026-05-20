@@ -1,0 +1,98 @@
+[
+  {
+    "id": "9f61f7eb-1ace-47f3-b8d5-9d5413e1282a",
+    "position": 1,
+    "filepath": "src/pages/slides/TitleSlide.tsx",
+    "title": "PRD — وثيقة متطلبات المنتج",
+    "description": "الغلاف الرسمي لوثيقة PRD الإصدار 1.0",
+    "speakerNotes": ""
+  },
+  {
+    "id": "b1c2d3e4-f5a6-7890-bcde-f12345678901",
+    "position": 2,
+    "filepath": "src/pages/slides/ProblemSlide.tsx",
+    "title": "§1–2 نظرة عامة وأهداف المنتج",
+    "description": "Product Overview & Goals",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c2d3e4f5-a6b7-8901-cdef-234567890123",
+    "position": 3,
+    "filepath": "src/pages/slides/SolutionSlide.tsx",
+    "title": "§3 شخصيات المستخدمين",
+    "description": "User Personas — Supplier & Buyer",
+    "speakerNotes": ""
+  },
+  {
+    "id": "d3e4f5a6-b7c8-9012-defa-345678901234",
+    "position": 4,
+    "filepath": "src/pages/slides/MarketSlide.tsx",
+    "title": "§4 ميزات المنتج — نظرة عامة F1–F8",
+    "description": "Product Features Overview",
+    "speakerNotes": ""
+  },
+  {
+    "id": "e4f5a6b7-c8d9-0123-efab-456789012345",
+    "position": 5,
+    "filepath": "src/pages/slides/ProductSlide.tsx",
+    "title": "§4 تفصيل الميزات — F1 Supplier Portal",
+    "description": "Supplier Portal + Buyer Features Detail",
+    "speakerNotes": ""
+  },
+  {
+    "id": "f5a6b7c8-d9e0-1234-fabc-567890123456",
+    "position": 6,
+    "filepath": "src/pages/slides/BusinessModelSlide.tsx",
+    "title": "§5 رحلة المشتري — Buyer Flow",
+    "description": "Buyer User Flow Diagram",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a6b7c8d9-e0f1-2345-abcd-678901234567",
+    "position": 7,
+    "filepath": "src/pages/slides/TargetMarketSlide.tsx",
+    "title": "§5 رحلة المورد — Supplier Flow",
+    "description": "Supplier User Flow Diagram",
+    "speakerNotes": ""
+  },
+  {
+    "id": "b7c8d9e0-f1a2-3456-bcde-789012345678",
+    "position": 8,
+    "filepath": "src/pages/slides/RoadmapSlide.tsx",
+    "title": "§6 نطاق النسخة الأولى — MVP",
+    "description": "MVP Scope, Out of Scope, NFR",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c8d9e0f1-a2b3-4567-cdef-890123456789",
+    "position": 9,
+    "filepath": "src/pages/slides/FinancialsSlide.tsx",
+    "title": "§7 البنية التقنية",
+    "description": "Technical Architecture — Stack & Integrations",
+    "speakerNotes": ""
+  },
+  {
+    "id": "f1e2d3c4-b5a6-7890-fedc-ba9876543210",
+    "position": 10,
+    "filepath": "src/pages/slides/ArchitectureSlide.tsx",
+    "title": "§7 Architecture Diagram — مخطط البنية التقنية",
+    "description": "Data Warehouse Architecture Diagram",
+    "speakerNotes": ""
+  },
+  {
+    "id": "d9e0f1a2-b3c4-5678-defa-901234567890",
+    "position": 11,
+    "filepath": "src/pages/slides/SustainabilitySlide.tsx",
+    "title": "§8 خارطة الطريق — Roadmap",
+    "description": "Phase 1 MVP · Phase 2 Tools · Phase 3 Mobile+AI",
+    "speakerNotes": ""
+  },
+  {
+    "id": "e0f1a2b3-c4d5-6789-efab-012345678901",
+    "position": 12,
+    "filepath": "src/pages/slides/ClosingSlide.tsx",
+    "title": "جرّب المنصة — Try the Platform",
+    "description": "Call to action — تجربة المنصة",
+    "speakerNotes": ""
+  }
+]

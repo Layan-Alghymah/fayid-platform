@@ -1,0 +1,20 @@
+packages:
+  "framer-motion": "For premium smooth animations and page transitions"
+  "react-hook-form": "For robust form handling in checkout and dashboards"
+  "@hookform/resolvers": "For Zod validation integration with react-hook-form"
+  "date-fns": "For formatting dates in order history and dashboards"
+  "clsx": "For conditional class names"
+  "tailwind-merge": "For merging tailwind classes efficiently"
+
+images:
+  - path: "artifacts/faed-marketplace/public/images/hero-bg.png"
+    description: "Premium dark and moody abstract gradient mesh combining deep petroleum navy (#0F3D4F) and rich teal (#195155) with subtle luxurious gold (#c9a84c) light leaks and elegant silk-like fabric folds flowing in the background"
+    aspect_ratio: "16:9"
+  - path: "artifacts/faed-marketplace/public/images/abstract-gold.png"
+    description: "Macro photography of golden threads and dark teal fabric textures intertwining, luxurious, high-end fashion vibe, dramatic lighting"
+    aspect_ratio: "16:9"
+
+notes:
+  - Application must be entirely RTL for Arabic.
+  - Relying on @workspace/api-client-react for TanStack Query hooks.
+  - Using cookie-based authentication via /api/auth/me.

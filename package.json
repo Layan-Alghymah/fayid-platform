@@ -1,0 +1,19 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "postinstall": "cd artifacts/faed-marketplace && npm install --include=dev",
+    "dev": "cd artifacts/faed-marketplace && npm run dev",
+    "build": "cd artifacts/faed-marketplace && npm install --include=dev && npm run build",
+    "preview": "cd artifacts/faed-marketplace && npm run serve"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.100.11"
+  }
+}

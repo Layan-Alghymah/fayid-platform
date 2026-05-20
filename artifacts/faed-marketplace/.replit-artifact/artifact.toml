@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Faed Platform — منصة فائض"
+version = "1.0.0"
+id = "artifacts/faed-marketplace"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+localPort = 22329
+name = "web"
+paths = ["/"]
+
+[services.development]
+run = "pnpm --filter @workspace/faed-marketplace run dev"
+
+[services.env]
+PORT = "22329"
+BASE_PATH = "/"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/faed-marketplace", "run", "build"]
+publicDir = "artifacts/faed-marketplace/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"

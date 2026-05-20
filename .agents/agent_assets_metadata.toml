@@ -1,0 +1,14 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "FaDEQVNCRGfcPHGl74GWC"
+uri = "file://.local/outputs/Slide-Visualizer.pptx"
+type = "slides"
+title = "Slide Visualizer.pptx"
+
+[[outputs]]
+id = "I2vZGh4uhRhxQdrjcKP_5"
+uri = "file://.local/outputs/Slide-Visualizer.pdf"
+type = "pdf"
+title = "Slide Visualizer.pdf"
