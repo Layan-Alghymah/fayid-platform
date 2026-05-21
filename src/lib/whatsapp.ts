@@ -1,9 +1,7 @@
 import type { CartItem } from "@/hooks/useCart";
 
-/** International format — 0559433431 → 966559433431 */
-export const WHATSAPP_NUMBER =
-  (import.meta.env.VITE_WHATSAPP_NUMBER ?? "966559433431").replace(/\D/g, "") ||
-  "966559433431";
+/** Fayid receives orders on this number (customer sends from their own WhatsApp). */
+export const WHATSAPP_NUMBER = "966559433431";
 
 export type WhatsAppCheckoutCustomer = {
   name: string;
@@ -91,11 +89,26 @@ export function buildWhatsAppOrderMessage(
   return lines.join("\n");
 }
 
-/** Opens WhatsApp with encoded order text. */
-export function openWhatsAppOrder(message: string): void {
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
-  if (!opened) {
-    window.location.href = url;
+/** Builds wa.me link — customer opens it and sends to Fayid manually. */
+export function getWhatsAppOrderUrl(message: string): string {
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+}
+
+/**
+ * Opens WhatsApp with prefilled order text.
+ * Tries a new tab first; if blocked, navigates current tab to wa.me.
+ */
+export function openWhatsAppOrder(message: string): string {
+  const url = getWhatsAppOrderUrl(message);
+
+  if (import.meta.env.DEV) {
+    console.log("[fayid] whatsappUrl", url);
   }
+
+  const popup = window.open(url, "_blank", "noopener,noreferrer");
+  if (popup === null) {
+    window.location.assign(url);
+  }
+
+  return url;
 }

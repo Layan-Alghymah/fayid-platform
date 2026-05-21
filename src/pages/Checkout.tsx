@@ -24,11 +24,7 @@ const customerSchema = z.object({
     .string()
     .min(10, "رقم الجوال يجب أن يكون 10 أرقام على الأقل")
     .regex(/^[0-9+\s-]+$/, "رقم الجوال غير صحيح"),
-  email: z
-    .string()
-    .email("صيغة البريد الإلكتروني غير صحيحة")
-    .optional()
-    .or(z.literal("")),
+  email: z.union([z.literal(""), z.string().email("صيغة البريد الإلكتروني غير صحيحة")]),
 });
 
 const addressSchema = z.object({
@@ -149,17 +145,17 @@ const STEPS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Checkout() {
-  const { cart, clearCart } = useCart();
+  const { cart } = useCart();
   const [step, setStep] = useState(1);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const {
     register,
-    handleSubmit,
     formState: { errors },
     watch,
     trigger,
+    getValues,
   } = useForm<CheckoutForm>({
     resolver: zodResolver(fullSchema),
     defaultValues: {
@@ -193,6 +189,8 @@ export default function Checkout() {
   };
 
   const onSubmit = (data: CheckoutForm) => {
+    if (!cart.items.length) return;
+
     const cityAddress = [
       data.region,
       data.city,
@@ -205,16 +203,34 @@ export default function Checkout() {
       .join("، ");
 
     const message = buildWhatsAppOrderMessage(cart.items, {
-      name: data.name,
-      phone: data.phone,
+      name: data.name.trim(),
+      phone: data.phone.trim(),
       cityAddress,
       notes: data.notes,
     });
 
     openWhatsAppOrder(message);
-    clearCart();
-    toast({ title: "تم إرسال الطلب!", description: "تم فتح واتساب لإرسال تفاصيل طلبك." });
-    setLocation("/");
+
+    toast({
+      title: "فتح واتساب",
+      description: "أرسل الرسالة من حسابك إلى فائض، ثم اضغط إرسال في واتساب.",
+    });
+  };
+
+  const handleWhatsAppSubmit = async () => {
+    const valid = await trigger();
+    if (!valid) {
+      if (import.meta.env.DEV) {
+        console.log("[fayid] checkout validation failed", errors);
+      }
+      toast({
+        title: "يرجى إكمال البيانات",
+        description: "تأكد من الاسم والجوال والعنوان وطريقة الشحن والدفع.",
+        variant: "destructive",
+      });
+      return;
+    }
+    onSubmit(getValues());
   };
 
   if (!cart?.items || cart.items.length === 0) {
@@ -285,7 +301,13 @@ export default function Checkout() {
         </div>
 
         {/* ─── Form ─────────────────────────────────────────────────────────── */}
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (step === 5) void handleWhatsAppSubmit();
+          }}
+          noValidate
+        >
 
           {/* STEP 1 – Customer Info */}
           {step === 1 && (
@@ -528,11 +550,12 @@ export default function Checkout() {
               </div>
 
               <Button
-                type="submit"
+                type="button"
                 size="lg"
                 className="w-full h-14 text-lg shadow-lg shadow-primary/20"
+                onClick={handleWhatsAppSubmit}
               >
-                إتمام الطلب عبر واتساب 💬
+                إرسال الطلب عبر واتساب
               </Button>
             </div>
           )}
