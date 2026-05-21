@@ -24,8 +24,23 @@ function loadCartState(): CartState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { items: [] };
-    return JSON.parse(raw) as CartState;
+    const parsed = JSON.parse(raw);
+    // Validate shape — must have an array of items with numeric productId and quantity
+    if (
+      !parsed ||
+      !Array.isArray(parsed.items) ||
+      parsed.items.some(
+        (i: unknown) =>
+          typeof (i as any)?.productId !== "number" ||
+          typeof (i as any)?.quantity !== "number"
+      )
+    ) {
+      localStorage.removeItem(STORAGE_KEY);
+      return { items: [] };
+    }
+    return parsed as CartState;
   } catch {
+    localStorage.removeItem(STORAGE_KEY);
     return { items: [] };
   }
 }
@@ -50,7 +65,7 @@ async function fetchProduct(id: number): Promise<MappedProduct | null> {
 export function useCart() {
   const [cartState, setCartState] = useState<CartState>(loadCartState);
   const [cart, setCart] = useState<Cart>({ items: [], total: 0 });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // true until first fetch completes
 
   // Build enriched cart whenever cartState changes
   const refreshCart = useCallback(async () => {

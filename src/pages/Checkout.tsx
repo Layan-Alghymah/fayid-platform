@@ -1,10 +1,10 @@
 import { Layout } from "@/components/Layout";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -185,14 +185,18 @@ export default function Checkout() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const subtotal = cart?.total ?? 0;
+  const shippingPrice = selectedShipping?.price ?? 0;
+  const total = subtotal + shippingPrice;
+
   const handleWhatsAppSubmit = () => {
     const phone = "966559433431";
     const values = getValues();
     const name = values.name?.trim() || "غير محدد";
     const customerPhone = values.phone?.trim() || "غير محدد";
 
-    const productLines = cart.items
-      .map((item) => `• ${item.product.name} (الكمية: ${item.quantity})`)
+    const productLines = (cart?.items ?? [])
+      .map((item) => `• ${item?.product?.name ?? "منتج"} (الكمية: ${item?.quantity ?? 1})`)
       .join("\n");
 
     const message = [
@@ -211,12 +215,6 @@ export default function Checkout() {
     window.location.href = url;
   };
 
-  useEffect(() => {
-    if (!cartLoading && cart.items.length === 0) {
-      setLocation("/cart");
-    }
-  }, [cartLoading, cart.items.length, setLocation]);
-
   if (cartLoading) {
     return (
       <Layout>
@@ -227,13 +225,18 @@ export default function Checkout() {
     );
   }
 
-  if (cart.items.length === 0) {
-    return null;
+  if (!cart?.items || cart.items.length === 0) {
+    return (
+      <Layout>
+        <div dir="rtl" className="max-w-2xl mx-auto px-4 py-24 text-center">
+          <p className="text-2xl font-bold mb-6">السلة فارغة</p>
+          <Link href="/products">
+            <Button size="lg">تصفح المنتجات</Button>
+          </Link>
+        </div>
+      </Layout>
+    );
   }
-
-  const subtotal = cart.total;
-  const shippingPrice = selectedShipping?.price ?? 0;
-  const total = subtotal + shippingPrice;
 
   // ─── Render ──────────────────────────────────────────────────────────────
 

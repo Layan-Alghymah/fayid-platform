@@ -57,19 +57,19 @@ export default function Cart() {
                   </button>
 
                   <div className="w-24 h-24 rounded-xl overflow-hidden bg-background flex-shrink-0">
-                    <img 
-                      src={item.product.imageUrl || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=200&h=200&fit=crop"} 
-                      alt={item.product.name}
+                    <img
+                      src={item.product?.imageUrl || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=200&h=200&fit=crop"}
+                      alt={item.product?.name ?? "منتج"}
                       className="w-full h-full object-cover"
                     />
                   </div>
 
                   <div className="flex-1 flex flex-col sm:flex-row items-center justify-between w-full">
                     <div className="text-center sm:text-right mb-4 sm:mb-0">
-                      <Link href={`/products/${item.product.id}`}>
-                        <h3 className="font-bold text-lg hover:text-primary transition-colors">{item.product.name}</h3>
+                      <Link href={`/products/${item.product?.id ?? item.productId}`}>
+                        <h3 className="font-bold text-lg hover:text-primary transition-colors">{item.product?.name ?? "منتج"}</h3>
                       </Link>
-                      <p className="text-primary font-bold mt-1">{formatPrice(item.product.price)}</p>
+                      <p className="text-primary font-bold mt-1">{formatPrice(item.product?.price ?? 0)}</p>
                     </div>
 
                     <div className="flex items-center bg-background border border-white/10 rounded-lg h-10 px-1">
@@ -79,10 +79,10 @@ export default function Cart() {
                         disabled={item.quantity <= 1}
                       >-</button>
                       <span className="w-10 text-center font-semibold">{item.quantity}</span>
-                      <button 
+                      <button
                         className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                        onClick={() => updateCartItem(item.productId, Math.min(item.product.quantity, item.quantity + 1))}
-                        disabled={item.quantity >= item.product.quantity}
+                        onClick={() => updateCartItem(item.productId, Math.min(item.product?.quantity ?? 999, item.quantity + 1))}
+                        disabled={item.quantity >= (item.product?.quantity ?? 999)}
                       >+</button>
                     </div>
                   </div>
