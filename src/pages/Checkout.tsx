@@ -8,8 +8,6 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useToast } from "@/hooks/use-toast";
-import { buildWhatsAppOrderMessage, openWhatsAppOrder } from "@/lib/whatsapp";
 import {
   CheckCircle2, ChevronRight, ChevronLeft,
   User, MapPin, Truck, CreditCard, ClipboardList,
@@ -148,7 +146,6 @@ export default function Checkout() {
   const { cart, loading: cartLoading } = useCart();
   const [step, setStep] = useState(1);
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
 
   const {
     register,
@@ -188,49 +185,30 @@ export default function Checkout() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const onSubmit = (data: CheckoutForm) => {
-    if (!cart.items.length) return;
+  const handleWhatsAppSubmit = () => {
+    const phone = "966559433431";
+    const values = getValues();
+    const name = values.name?.trim() || "غير محدد";
+    const customerPhone = values.phone?.trim() || "غير محدد";
 
-    const cityAddress = [
-      data.region,
-      data.city,
-      `حي ${data.neighborhood}`,
-      data.detailedAddress,
-      `العنوان الوطني: ${data.nationalAddress}`,
-      data.postalCode ? `الرمز البريدي: ${data.postalCode}` : null,
-    ]
-      .filter(Boolean)
-      .join("، ");
+    const productLines = cart.items
+      .map((item) => `• ${item.product.name} (الكمية: ${item.quantity})`)
+      .join("\n");
 
-    const message = buildWhatsAppOrderMessage(cart.items, {
-      name: data.name.trim(),
-      phone: data.phone.trim(),
-      cityAddress,
-      notes: data.notes,
-    });
+    const message = [
+      "طلب جديد من فائض",
+      "",
+      `الاسم: ${name}`,
+      `الجوال: ${customerPhone}`,
+      "",
+      "المنتجات:",
+      productLines,
+      "",
+      `الإجمالي: ${total} ر.س`,
+    ].join("\n");
 
-    openWhatsAppOrder(message);
-
-    toast({
-      title: "فتح واتساب",
-      description: "أرسل الرسالة من حسابك إلى فائض، ثم اضغط إرسال في واتساب.",
-    });
-  };
-
-  const handleWhatsAppSubmit = async () => {
-    const valid = await trigger();
-    if (!valid) {
-      if (import.meta.env.DEV) {
-        console.log("[fayid] checkout validation failed", errors);
-      }
-      toast({
-        title: "يرجى إكمال البيانات",
-        description: "تأكد من الاسم والجوال والعنوان وطريقة الشحن والدفع.",
-        variant: "destructive",
-      });
-      return;
-    }
-    onSubmit(getValues());
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.location.href = url;
   };
 
   useEffect(() => {
@@ -319,7 +297,7 @@ export default function Checkout() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (step === 5) void handleWhatsAppSubmit();
+            if (step === 5) handleWhatsAppSubmit();
           }}
           noValidate
         >
