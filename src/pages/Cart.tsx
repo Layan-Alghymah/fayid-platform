@@ -110,12 +110,15 @@ export default function Cart() {
                   </div>
                 </div>
 
-                <Link href="/checkout">
-                  <Button size="lg" className="w-full shadow-lg shadow-primary/20 text-lg h-14">
-                    إتمام الطلب
-                    <ArrowRight className="w-5 h-5 mr-2" />
-                  </Button>
-                </Link>
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full shadow-lg shadow-primary/20 text-lg h-14"
+                  onClick={() => setLocation("/checkout")}
+                >
+                  إتمام الطلب
+                  <ArrowRight className="w-5 h-5 mr-2" />
+                </Button>
               </div>
             </div>
           </div>

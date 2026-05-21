@@ -1,5 +1,5 @@
 import { Layout } from "@/components/Layout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -145,7 +145,7 @@ const STEPS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Checkout() {
-  const { cart } = useCart();
+  const { cart, loading: cartLoading } = useCart();
   const [step, setStep] = useState(1);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -233,8 +233,23 @@ export default function Checkout() {
     onSubmit(getValues());
   };
 
-  if (!cart?.items || cart.items.length === 0) {
-    setLocation("/cart");
+  useEffect(() => {
+    if (!cartLoading && cart.items.length === 0) {
+      setLocation("/cart");
+    }
+  }, [cartLoading, cart.items.length, setLocation]);
+
+  if (cartLoading) {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto px-4 py-20 text-center text-muted-foreground">
+          جاري تحميل السلة...
+        </div>
+      </Layout>
+    );
+  }
+
+  if (cart.items.length === 0) {
     return null;
   }
 

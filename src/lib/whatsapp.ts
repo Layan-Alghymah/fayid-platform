@@ -107,7 +107,7 @@ export function openWhatsAppOrder(message: string): string {
 
   const popup = window.open(url, "_blank", "noopener,noreferrer");
   if (popup === null) {
-    window.location.assign(url);
+    window.location.href = url;
   }
 
   return url;

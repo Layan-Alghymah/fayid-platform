@@ -24,10 +24,10 @@ export function useProducts(filters?: Filters) {
         query = query.eq('category', filters.category);
       }
 
-      const { data, error, count } = await query;
+      const { data, error } = await query;
       if (error) throw error;
 
-      let products = (data || []).map(mapSupabaseToProduct);
+      let products = (data ?? []).map(mapSupabaseToProduct);
 
       // Client-side filtering for search and price range
       if (filters?.search) {
@@ -47,7 +47,7 @@ export function useProducts(filters?: Filters) {
         products = products.filter(p => p.price <= filters.maxPrice!);
       }
 
-      return { products, total: count ?? products.length };
+      return { products, total: products.length };
     },
   });
 }

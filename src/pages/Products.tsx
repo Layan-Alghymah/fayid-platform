@@ -5,6 +5,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { HomeBackLink } from "@/components/HomeBackLink";
 
 export default function Products() {
   const searchParams = new URLSearchParams(window.location.search);
@@ -19,7 +20,10 @@ export default function Products() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const { data, isLoading } = useProducts({
+  const hasActiveFilters =
+    Boolean(filters.search || filters.category || filters.minPrice || filters.maxPrice);
+
+  const { data, isLoading, isError } = useProducts({
     search: filters.search || undefined,
     category: filters.category || undefined,
     minPrice: filters.minPrice ? Number(filters.minPrice) : undefined,
@@ -41,12 +45,15 @@ export default function Products() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col md:flex-row gap-8">
         
         {/* Mobile Filter Toggle */}
-        <div className="md:hidden flex items-center justify-between mb-4">
+        <div className="md:hidden mb-4 space-y-3">
+          <HomeBackLink />
+          <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">المنتجات</h1>
           <Button variant="outline" onClick={() => setIsSidebarOpen(true)}>
             <SlidersHorizontal className="w-4 h-4 ml-2" />
             الفلاتر
           </Button>
+          </div>
         </div>
 
         {/* Sidebar Filters */}
@@ -134,7 +141,8 @@ export default function Products() {
         {/* Products Grid */}
         <div className="flex-1">
           <div className="hidden md:block mb-8">
-            <h1 className="text-3xl font-bold text-foreground">جميع المنتجات</h1>
+            <HomeBackLink />
+            <h1 className="text-3xl font-bold text-foreground mt-3">جميع المنتجات</h1>
             <p className="text-muted-foreground mt-2">
               {data ? `تم العثور على ${data.total} منتج` : 'جاري التحميل...'}
             </p>
@@ -155,8 +163,20 @@ export default function Products() {
           ) : (
             <div className="text-center py-32 glass-panel rounded-3xl">
               <Search className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-30" />
-              <h3 className="text-2xl font-bold text-foreground">لا توجد نتائج</h3>
-              <p className="text-muted-foreground mt-2">جرب تغيير الفلاتر أو كلمات البحث.</p>
+              <h3 className="text-2xl font-bold text-foreground">
+                {isError
+                  ? "تعذّر تحميل المنتجات"
+                  : hasActiveFilters
+                    ? "لا توجد نتائج"
+                    : "لا توجد منتجات حالياً"}
+              </h3>
+              <p className="text-muted-foreground mt-2">
+                {isError
+                  ? "تحقق من الاتصال بقاعدة البيانات وحاول مرة أخرى."
+                  : hasActiveFilters
+                    ? "جرب تغيير الفلاتر أو كلمات البحث."
+                    : "ستتوفر المنتجات قريباً، عد لاحقاً."}
+              </p>
             </div>
           )}
         </div>
