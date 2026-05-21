@@ -13,13 +13,25 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            src={`${import.meta.env.BASE_URL}images/hero-bg.png`} 
-            alt="Hero Background" 
-            className="w-full h-full object-cover opacity-80 mix-blend-screen"
+          {/* Light Mode hero — cover / center / no-repeat */}
+          <div
+            className="absolute inset-0 block dark:hidden bg-cover bg-center bg-no-repeat"
+            style={{
+              backgroundImage: `url(${import.meta.env.BASE_URL}images/light-hero-bg.png)`,
+            }}
+            role="img"
+            aria-label="Hero Background"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-l from-background/90 to-transparent" />
+          {/* Dark Mode hero — unchanged */}
+          <div className="absolute inset-0 hidden dark:block">
+            <img
+              src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
+              alt="Hero Background"
+              className="w-full h-full object-cover opacity-80 mix-blend-screen"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-l from-background/90 to-transparent" />
+          </div>
         </div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-20">
