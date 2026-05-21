@@ -1,6 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* Match next-themes class strategy (not prefers-color-scheme) */
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant light (&:where(.light, .light *));
+
 @theme inline {
   --font-sans: 'Cairo', sans-serif;
   --font-display: 'Cairo', sans-serif;
@@ -94,6 +98,27 @@
 
 .light .glass-panel {
   @apply border-black/10 bg-white/80;
+}
+
+/* Homepage hero backgrounds — theme class on <html>, not system preference */
+.hero-bg-light {
+  display: none;
+  background-image: url("/images/light-hero-bg.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.light .hero-bg-light {
+  display: block;
+}
+
+.hero-bg-dark {
+  display: block;
+}
+
+.light .hero-bg-dark {
+  display: none;
 }
 
 @layer base {

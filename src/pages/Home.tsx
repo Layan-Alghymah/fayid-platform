@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Box, CheckCircle, Percent, Recycle, Zap } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductCard } from "@/components/ProductCard";
+import { SupplierJoinLink } from "@/components/SupplierJoinLink";
+import { SHOW_PARTNER_SECTIONS } from "@/lib/config";
 
 export default function Home() {
   const { data: featuredData, isLoading } = useProducts({});
@@ -13,21 +15,19 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          {/* Light Mode hero — cover / center / no-repeat */}
+          {/* Light Mode — /images/light-hero-bg.png (no overlays) */}
           <div
-            className="absolute inset-0 block dark:hidden bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `url(${import.meta.env.BASE_URL}images/light-hero-bg.png)`,
-            }}
+            className="hero-bg-light absolute inset-0"
             role="img"
             aria-label="Hero Background"
           />
-          {/* Dark Mode hero — unchanged */}
-          <div className="absolute inset-0 hidden dark:block">
+          {/* Dark Mode — /images/hero-bg.png */}
+          <div className="hero-bg-dark absolute inset-0">
             <img
-              src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
-              alt="Hero Background"
+              src="/images/hero-bg.png"
+              alt=""
               className="w-full h-full object-cover opacity-80 mix-blend-screen"
+              aria-hidden
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-l from-background/90 to-transparent" />
@@ -57,11 +57,11 @@ export default function Home() {
                   <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link href="/register?role=supplier">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg bg-black/20 backdrop-blur-sm">
-                  انضم كمورد
-                </Button>
-              </Link>
+              <SupplierJoinLink
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto text-lg bg-black/20 backdrop-blur-sm"
+              />
             </div>
           </div>
         </div>
@@ -161,7 +161,7 @@ export default function Home() {
         </div>
       </section>
       
-      {/* Partners / Brands */}
+      {SHOW_PARTNER_SECTIONS && (
       <section className="py-20 border-y border-white/5 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
@@ -227,8 +227,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
-      {/* Our Designers */}
+      {SHOW_PARTNER_SECTIONS && (
       <section className="py-24 bg-muted/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -320,6 +321,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Decorative banner */}
       <section className="py-20 relative overflow-hidden">
@@ -336,11 +338,12 @@ export default function Home() {
           <p className="text-lg text-white/80 mb-10">
             انضم لأكثر من 500 مصنع وعلامة تجارية يثقون في منصة فائض لتسييل مخزونهم بسرعة وكفاءة.
           </p>
-          <Link href="/register?role=supplier">
-            <Button size="lg" className="bg-white text-secondary hover:bg-white/90 text-lg font-bold px-10 h-14">
-              سجل كمورد الآن
-            </Button>
-          </Link>
+          <SupplierJoinLink
+            size="lg"
+            className="bg-white text-secondary hover:bg-white/90 text-lg font-bold px-10 h-14"
+          >
+            انضم كمورد
+          </SupplierJoinLink>
         </div>
       </section>
 
