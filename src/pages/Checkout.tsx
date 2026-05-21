@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
+import { buildWhatsAppOrderMessage, openWhatsAppOrder } from "@/lib/whatsapp";
 import {
   CheckCircle2, ChevronRight, ChevronLeft,
   User, MapPin, Truck, CreditCard, ClipboardList,
@@ -145,8 +146,6 @@ const STEPS = [
   { id: 5, label: "المراجعة", Icon: ClipboardList },
 ];
 
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || "966559433431";
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Checkout() {
@@ -194,8 +193,7 @@ export default function Checkout() {
   };
 
   const onSubmit = (data: CheckoutForm) => {
-    // Build WhatsApp message
-    const composedAddress = [
+    const cityAddress = [
       data.region,
       data.city,
       `حي ${data.neighborhood}`,
@@ -206,49 +204,14 @@ export default function Checkout() {
       .filter(Boolean)
       .join("، ");
 
-    // Group items by supplier
-    const supplierGroups: Record<string, typeof cart.items> = {};
-    for (const item of cart.items) {
-      const supplier = item.product.supplierName || 'مورد غير محدد';
-      if (!supplierGroups[supplier]) supplierGroups[supplier] = [];
-      supplierGroups[supplier].push(item);
-    }
+    const message = buildWhatsAppOrderMessage(cart.items, {
+      name: data.name,
+      phone: data.phone,
+      cityAddress,
+      notes: data.notes,
+    });
 
-    let message = `🛍️ *طلب جديد من منصة فائض*\n`;
-    message += `━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `👤 *معلومات العميل:*\n`;
-    message += `الاسم: ${data.name}\n`;
-    message += `الجوال: ${data.phone}\n`;
-    if (data.email) message += `البريد: ${data.email}\n`;
-    message += `\n📍 *العنوان:*\n${composedAddress}\n`;
-    if (data.notes) message += `\n📝 ملاحظات: ${data.notes}\n`;
-    message += `\n━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `📦 *المنتجات:*\n\n`;
-
-    for (const [supplier, items] of Object.entries(supplierGroups)) {
-      message += `🏪 *${supplier}*\n`;
-      for (const item of items) {
-        message += `  • ${item.product.name}\n`;
-        message += `    الكمية: ${item.quantity} | السعر: ${formatPrice(item.product.price * item.quantity)}\n`;
-      }
-      message += `\n`;
-    }
-
-    const subtotal = cart.total;
-    const shippingPrice = selectedShipping?.price ?? 0;
-    const total = subtotal + shippingPrice;
-
-    message += `━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `💰 *ملخص الطلب:*\n`;
-    message += `المجموع الفرعي: ${formatPrice(subtotal)}\n`;
-    message += `رسوم الشحن (${selectedShipping?.name}): ${shippingPrice > 0 ? formatPrice(shippingPrice) : '—'}\n`;
-    message += `طريقة الدفع: ${selectedPayment?.name}\n`;
-    message += `\n*الإجمالي: ${formatPrice(total)}*\n`;
-
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
-
-    window.open(whatsappUrl, '_blank');
+    openWhatsAppOrder(message);
     clearCart();
     toast({ title: "تم إرسال الطلب!", description: "تم فتح واتساب لإرسال تفاصيل طلبك." });
     setLocation("/");
