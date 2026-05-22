@@ -50,6 +50,7 @@ export default function AdminSuppliers() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
+  const [newSupplierId, setNewSupplierId] = useState<number | null>(null);
 
   async function loadSuppliers() {
     setLoading(true);
@@ -88,14 +89,18 @@ export default function AdminSuppliers() {
     }
 
     setSaving(true);
-    const { error } = await adminSupabase.from("suppliers").insert({
-      name: form.name.trim(),
-      email: form.email.trim() || null,
-      whatsapp: form.whatsapp.trim() || null,
-      city: form.city.trim() || null,
-      type: form.type || null,
-      is_active: form.is_active,
-    });
+    const { data: inserted, error } = await adminSupabase
+      .from("suppliers")
+      .insert({
+        name: form.name.trim(),
+        email: form.email.trim() || null,
+        whatsapp: form.whatsapp.trim() || null,
+        city: form.city.trim() || null,
+        type: form.type || null,
+        is_active: form.is_active,
+      })
+      .select()
+      .single();
 
     if (error) {
       setFormError(`فشل الحفظ: ${error.message}`);
@@ -103,14 +108,11 @@ export default function AdminSuppliers() {
       return;
     }
 
+    setNewSupplierId(inserted?.id ?? null);
     setFormSuccess("تم إضافة المورد بنجاح");
     setForm(defaultForm);
     setSaving(false);
     await loadSuppliers();
-    setTimeout(() => {
-      setShowForm(false);
-      setFormSuccess("");
-    }, 1500);
   };
 
   return (
@@ -131,6 +133,7 @@ export default function AdminSuppliers() {
                 setShowForm((v) => !v);
                 setFormError("");
                 setFormSuccess("");
+                setNewSupplierId(null);
               }}
               className="gap-2"
             >
@@ -216,20 +219,38 @@ export default function AdminSuppliers() {
                 {formError && (
                   <p className="col-span-full text-destructive text-sm">{formError}</p>
                 )}
+
                 {formSuccess && (
-                  <p className="col-span-full text-green-500 text-sm">{formSuccess}</p>
+                  <div className="col-span-full flex flex-wrap items-center gap-3 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
+                    <p className="text-green-500 text-sm font-medium flex-1">{formSuccess}</p>
+                    {newSupplierId && (
+                      <Link href={`/admin/suppliers/${newSupplierId}`}>
+                        <Button size="sm" className="gap-1">
+                          فتح صفحة المورد
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 )}
 
                 <div className="col-span-full flex gap-3 pt-2">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? "جاري الحفظ..." : "حفظ المورد"}
-                  </Button>
+                  {!formSuccess && (
+                    <Button type="submit" disabled={saving}>
+                      {saving ? "جاري الحفظ..." : "حفظ المورد"}
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => {
+                      setShowForm(false);
+                      setFormSuccess("");
+                      setFormError("");
+                      setNewSupplierId(null);
+                    }}
                   >
-                    إلغاء
+                    {formSuccess ? "إغلاق" : "إلغاء"}
                   </Button>
                 </div>
               </form>
