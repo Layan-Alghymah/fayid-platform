@@ -145,10 +145,10 @@ export default function AdminSupplierDetail() {
     // Upload image if provided
     let imageUrl: string | null = null;
     if (imageFile) {
-      const ext = imageFile.name.split(".").pop();
-      const path = `${supplierId}/${Date.now()}.${ext}`;
+      const safeName = imageFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `products/${Date.now()}-${safeName}`;
       const { data: uploadData, error: uploadError } = await adminSupabase.storage
-        .from("product-images")
+        .from("image_url")
         .upload(path, imageFile, { upsert: false });
 
       if (uploadError) {
@@ -158,7 +158,7 @@ export default function AdminSupplierDetail() {
       }
 
       const { data: urlData } = adminSupabase.storage
-        .from("product-images")
+        .from("image_url")
         .getPublicUrl(uploadData.path);
       imageUrl = urlData.publicUrl;
     }
