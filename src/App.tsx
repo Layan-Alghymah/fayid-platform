@@ -17,6 +17,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminSuppliers from "@/pages/AdminSuppliers";
 import AdminSupplierDetail from "@/pages/AdminSupplierDetail";
+import JoinSupplier from "@/pages/JoinSupplier";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/checkout" component={Checkout} />
       <Route path="/orders/:id" component={OrderDetail} />
       <Route path="/orders" component={Orders} />
+      <Route path="/join-supplier" component={JoinSupplier} />
       <Route path="/login" component={Auth} />
       <Route path="/register" component={Auth} />
       <Route path="/supplier" component={SupplierDashboard} />
