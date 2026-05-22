@@ -1,26 +1,40 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
+
+const SESSION_KEY = "fayid_admin_session";
+const ADMIN_PASSWORD =
+  import.meta.env.VITE_ADMIN_PASSWORD || "fayid-admin-2026";
 
 interface AdminAuthContextType {
-  adminUser: null;
-  isAdminAuthenticated: boolean;
-  isLoading: boolean;
+  isAdmin: boolean;
+  login: (password: string) => boolean;
+  logout: () => void;
 }
 
-const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
+const AdminAuthContext = createContext<AdminAuthContextType | undefined>(
+  undefined
+);
 
-/**
- * Admin auth — coming soon.
- * For now, no admin user is available.
- */
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
+  const [isAdmin, setIsAdmin] = useState(
+    () => localStorage.getItem(SESSION_KEY) === "true"
+  );
+
+  const login = (password: string): boolean => {
+    if (password === ADMIN_PASSWORD) {
+      localStorage.setItem(SESSION_KEY, "true");
+      setIsAdmin(true);
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    localStorage.removeItem(SESSION_KEY);
+    setIsAdmin(false);
+  };
+
   return (
-    <AdminAuthContext.Provider
-      value={{
-        adminUser: null,
-        isAdminAuthenticated: false,
-        isLoading: false,
-      }}
-    >
+    <AdminAuthContext.Provider value={{ isAdmin, login, logout }}>
       {children}
     </AdminAuthContext.Provider>
   );

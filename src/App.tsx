@@ -15,6 +15,8 @@ import Auth from "@/pages/Auth";
 import SupplierDashboard from "@/pages/SupplierDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
+import AdminSuppliers from "@/pages/AdminSuppliers";
+import AdminSupplierDetail from "@/pages/AdminSupplierDetail";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -35,6 +37,8 @@ function Router() {
       {/* Admin routes — not linked from public navigation */}
       <Route path="/admin-login" component={AdminLogin} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/suppliers" component={AdminSuppliers} />
+      <Route path="/admin/suppliers/:id" component={AdminSupplierDetail} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -9,6 +9,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Admin client uses service role key — bypasses RLS for admin operations.
+// Set VITE_SUPABASE_SERVICE_KEY in your .env to enable write operations.
+const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY ?? supabaseAnonKey;
+export const adminSupabase = createClient(supabaseUrl, serviceKey, {
+  auth: { persistSession: false },
+});
+
 export type SupabaseProduct = {
   id: number;
   supplier_id: number | null;
@@ -31,7 +38,11 @@ export type Supplier = {
   id: number;
   name: string;
   email: string | null;
+  whatsapp: string | null;
+  city: string | null;
+  type: string | null;
   is_active: boolean;
+  created_at?: string;
 };
 
 // UI Product type (matches the old API client Product schema)
