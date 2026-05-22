@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandLogo } from "@/components/BrandLogo";
+import { TermsModal } from "@/components/TermsModal";
 import { CheckCircle2, ArrowRight, Home } from "lucide-react";
 
 // ─── Static options ────────────────────────────────────────────────────────────
@@ -81,6 +82,7 @@ export default function JoinSupplier() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [termsOpen, setTermsOpen] = useState(false);
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -369,7 +371,13 @@ export default function JoinSupplier() {
               />
               <span className="text-sm text-muted-foreground leading-relaxed">
                 أوافق على{" "}
-                <span className="text-primary font-medium">شروط وأحكام منصة فائض</span>
+                <button
+                  type="button"
+                  onClick={() => setTermsOpen(true)}
+                  className="text-primary font-medium underline underline-offset-2 hover:text-primary/80 transition-colors"
+                >
+                  شروط وأحكام منصة فائض
+                </button>
                 {" "}وأتحمل مسؤولية صحة المعلومات المُدخلة.
               </span>
             </label>
@@ -377,6 +385,8 @@ export default function JoinSupplier() {
               <p className="text-destructive text-xs mt-1.5 mr-8">{errors.accept_terms}</p>
             )}
           </div>
+
+          <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
 
           {/* ── Submit ── */}
           {submitError && (
