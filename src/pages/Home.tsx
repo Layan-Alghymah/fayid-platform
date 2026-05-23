@@ -30,22 +30,19 @@ const CATEGORIES = [
   {
     name: "فساتين",
     catSlug: "dresses",
-    dbCategory: "dresses",
-    fallbackLocal: "/products/evening-dress.png",
+    localImage: "/images/categories/dresses.jpg",
     href: "/products?category=dresses",
   },
   {
     name: "عبايات",
     catSlug: "abayas",
-    dbCategory: "abayas",
-    fallbackLocal: "/products/abaya.png",
+    localImage: "/images/categories/abayas.jpg",
     href: "/products?category=abayas",
   },
   {
     name: "أقمشة",
     catSlug: "textiles",
-    dbCategory: "textiles",
-    fallbackLocal: "/products/cashmere-fabric.png",
+    localImage: "/images/categories/fabrics.jpg",
     href: "/products?category=textiles",
   },
 ];
@@ -87,14 +84,6 @@ export default function Home() {
     },
     staleTime: 5 * 60 * 1000,
   });
-
-  // Pick first product image per DB category
-  const categoryImage = (dbCat: string, fallback: string): string => {
-    const match = featuredData?.products?.find(
-      (p) => p.category === dbCat && p.imageUrl
-    );
-    return match?.imageUrl ?? fallback;
-  };
 
   return (
     <Layout>
@@ -197,32 +186,26 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {CATEGORIES.map((cat) => {
-              const imgSrc = categoryImage(cat.dbCategory, `/images/categories/${cat.catSlug}.jpg`);
-              return (
-                <Link
-                  key={cat.catSlug}
-                  href={cat.href}
-                  className="group relative overflow-hidden rounded-2xl aspect-[4/5] block"
-                >
-                  <img
-                    src={imgSrc}
-                    alt={cat.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    onError={(e) => {
-                      // Fallback to local product image if dynamic/category image fails
-                      if (e.currentTarget.src !== cat.fallbackLocal) {
-                        e.currentTarget.src = cat.fallbackLocal;
-                      }
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity group-hover:opacity-90" />
-                  <div className="absolute bottom-6 left-6 right-6">
-                    <h3 className="text-white font-extrabold text-2xl">{cat.name}</h3>
-                  </div>
-                </Link>
-              );
-            })}
+            {CATEGORIES.map((cat) => (
+              <Link
+                key={cat.catSlug}
+                href={cat.href}
+                className="group relative overflow-hidden rounded-2xl aspect-[4/5] block"
+              >
+                <img
+                  src={cat.localImage}
+                  alt={cat.name}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  onError={(e) => {
+                    e.currentTarget.src = "/images/placeholder.jpg";
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity group-hover:opacity-90" />
+                <div className="absolute bottom-6 left-6 right-6">
+                  <h3 className="text-white font-extrabold text-2xl">{cat.name}</h3>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

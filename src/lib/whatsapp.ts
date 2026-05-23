@@ -92,7 +92,7 @@ export function buildWhatsAppOrderMessage(
   totalShipping = shippingTotal || supplierGroups.size * 30;
 
   lines.push(`إجمالي الشحن: ${totalShipping} ر.س`);
-  lines.push(`رسوم المنصة: مجاناً حالياً`);
+  lines.push(`رسوم المنصة: مجاناً`);
   lines.push(`الإجمالي الكلي: ${grandTotal + totalShipping} ر.س`);
   lines.push("");
   lines.push("طريقة الدفع:");

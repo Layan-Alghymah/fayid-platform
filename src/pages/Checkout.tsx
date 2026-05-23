@@ -552,7 +552,7 @@ export default function Checkout() {
                   <SummaryRow label="إجمالي الشحن" value={formatPrice(shippingPrice)} />
                   <div className="flex justify-between text-muted-foreground">
                     <span>رسوم المنصة</span>
-                    <span className="text-green-500 font-bold">مجاناً حالياً</span>
+                    <span className="text-green-500 font-bold">مجاناً</span>
                   </div>
                   <SummaryRow label="طريقة الدفع" value={selectedPaymentLabel} />
                   <div className="flex justify-between font-black text-lg border-t border-white/10 pt-3">

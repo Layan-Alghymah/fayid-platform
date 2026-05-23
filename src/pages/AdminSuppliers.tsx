@@ -93,32 +93,61 @@ export default function AdminSuppliers() {
     setDeleting(true);
 
     // Step 1: delete all products for this supplier
-    const { error: prodErr } = await adminSupabase
+    const { error: prodErr, count: prodCount } = await adminSupabase
       .from("products")
-      .delete()
+      .delete({ count: "exact" })
       .eq("supplier_id", supplierId);
 
     if (prodErr) {
-      toast({ title: "خطأ", description: `فشل حذف المنتجات: ${prodErr.message}`, variant: "destructive" });
+      const isRls = prodErr.code === "42501" || prodErr.message?.includes("row-level security");
+      toast({
+        title: "خطأ في الحذف",
+        description: isRls
+          ? "مرفوض: RLS يمنع الحذف. تأكد من ضبط VITE_SUPABASE_SERVICE_KEY."
+          : `فشل حذف المنتجات: ${prodErr.message}`,
+        variant: "destructive",
+      });
       setDeleting(false);
       return;
     }
 
     // Step 2: delete the supplier
-    const { error: suppErr } = await adminSupabase
+    const { error: suppErr, count: suppCount } = await adminSupabase
       .from("suppliers")
-      .delete()
+      .delete({ count: "exact" })
       .eq("id", supplierId);
 
     if (suppErr) {
-      toast({ title: "خطأ", description: `فشل حذف المورد: ${suppErr.message}`, variant: "destructive" });
+      const isRls = suppErr.code === "42501" || suppErr.message?.includes("row-level security");
+      toast({
+        title: "خطأ في الحذف",
+        description: isRls
+          ? "مرفوض: RLS يمنع الحذف. تأكد من ضبط VITE_SUPABASE_SERVICE_KEY."
+          : `فشل حذف المورد: ${suppErr.message}`,
+        variant: "destructive",
+      });
       setDeleting(false);
+      return;
+    }
+
+    // Verify supplier was actually deleted (count=0 means RLS silently blocked it)
+    if (suppCount === 0) {
+      toast({
+        title: "تحذير",
+        description: "لم يُحذف المورد — قد يكون VITE_SUPABASE_SERVICE_KEY غير مضبوط.",
+        variant: "destructive",
+      });
+      setDeleting(false);
+      setDeleteConfirm(null);
       return;
     }
 
     setDeleteConfirm(null);
     setDeleting(false);
-    toast({ title: "تم الحذف", description: "تم حذف المورد وجميع منتجاته بنجاح" });
+    toast({
+      title: "تم الحذف",
+      description: `تم حذف المورد و${prodCount ?? 0} منتج بنجاح`,
+    });
     await loadSuppliers();
   };
 

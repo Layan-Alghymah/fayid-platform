@@ -104,7 +104,7 @@ export default function Cart() {
                     <span>رسوم المنصة</span>
                     <div className="flex items-center gap-1.5">
                       <span className="line-through text-xs opacity-50">{formatPrice(cart.total * 0.1)}</span>
-                      <span className="text-green-500 font-bold text-xs">مجاناً حالياً</span>
+                      <span className="text-green-500 font-bold text-xs">مجاناً</span>
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground/60 text-left">
