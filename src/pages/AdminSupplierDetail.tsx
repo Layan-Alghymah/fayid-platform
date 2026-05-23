@@ -5,6 +5,7 @@ import { AdminPasswordGate } from "@/components/admin/AdminPasswordGate";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import {
   ChevronRight,
   Package,
@@ -15,7 +16,15 @@ import {
   EyeOff,
   ImageIcon,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
+
+const SUPPLIER_TYPES = [
+  { value: "manufacturer", label: "مصنع" },
+  { value: "wholesaler", label: "تاجر جملة" },
+  { value: "boutique", label: "بوتيك" },
+  { value: "other", label: "أخرى" },
+];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +58,7 @@ const defaultProductForm = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AdminSupplierDetail() {
+  const { toast } = useToast();
   const [, params] = useRoute("/admin/suppliers/:id");
   const supplierId = parseInt(params?.id ?? "0");
 
@@ -56,6 +66,11 @@ export default function AdminSupplierDetail() {
   const [products, setProducts] = useState<SupabaseProduct[]>([]);
   const [loadingSupplier, setLoadingSupplier] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
+
+  // Supplier edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", city: "", whatsapp: "", email: "", type: "", is_active: true });
+  const [editSaving, setEditSaving] = useState(false);
 
   // Product form state
   const [showProductForm, setShowProductForm] = useState(false);
@@ -109,6 +124,47 @@ export default function AdminSupplierDetail() {
       loadProducts();
     }
   }, [supplierId]);
+
+  // ─── Edit supplier ─────────────────────────────────────────────────────────
+
+  const openEditModal = () => {
+    if (!supplier) return;
+    setEditForm({
+      name: supplier.name ?? "",
+      city: supplier.city ?? "",
+      whatsapp: supplier.whatsapp ?? "",
+      email: supplier.email ?? "",
+      type: supplier.type ?? "wholesaler",
+      is_active: supplier.is_active ?? true,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm.name.trim()) return;
+    setEditSaving(true);
+    const { error } = await adminSupabase
+      .from("suppliers")
+      .update({
+        name: editForm.name.trim(),
+        city: editForm.city.trim() || null,
+        whatsapp: editForm.whatsapp.trim() || null,
+        email: editForm.email.trim() || null,
+        type: editForm.type || null,
+        is_active: editForm.is_active,
+      })
+      .eq("id", supplierId);
+
+    if (error) {
+      toast({ title: "خطأ", description: `فشل الحفظ: ${error.message}`, variant: "destructive" });
+    } else {
+      toast({ title: "تم الحفظ", description: "تم تحديث بيانات المورد بنجاح" });
+      setShowEditModal(false);
+      await loadSupplier();
+    }
+    setEditSaving(false);
+  };
 
   // ─── Image handling ────────────────────────────────────────────────────────
 
@@ -288,7 +344,13 @@ export default function AdminSupplierDetail() {
 
           {/* ── Section 1: Supplier Info ── */}
           <section className="glass-panel rounded-2xl p-6">
-            <h2 className="text-xl font-bold mb-4">بيانات المورد</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">بيانات المورد</h2>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={openEditModal}>
+                <Pencil className="w-3.5 h-3.5" />
+                تعديل معلومات المورد
+              </Button>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
               <InfoRow label="الاسم" value={supplier.name} />
               <InfoRow label="البريد" value={supplier.email ?? "—"} />
@@ -688,6 +750,55 @@ export default function AdminSupplierDetail() {
             <p className="text-muted-foreground text-sm">قريبًا</p>
           </section>
         </main>
+
+        {/* ── Edit Supplier Modal ── */}
+        {showEditModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <div className="glass-panel rounded-2xl p-6 max-w-lg w-full space-y-5 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-bold">تعديل معلومات المورد</h3>
+              <form onSubmit={handleEditSave} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold mb-1.5">الاسم <span className="text-destructive">*</span></label>
+                  <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} placeholder="اسم المورد" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1.5">المدينة</label>
+                  <Input value={editForm.city} onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))} placeholder="الرياض" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1.5">واتساب</label>
+                  <Input value={editForm.whatsapp} onChange={(e) => setEditForm((f) => ({ ...f, whatsapp: e.target.value }))} placeholder="966501234567" dir="ltr" className="text-right" inputMode="tel" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1.5">البريد الإلكتروني</label>
+                  <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} placeholder="supplier@example.com" dir="ltr" className="text-right" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1.5">النوع</label>
+                  <select value={editForm.type} onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))} className="w-full bg-background/50 border border-border rounded-xl px-4 h-11 text-sm focus:outline-none focus:border-primary">
+                    {SUPPLIER_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" checked={editForm.is_active} onChange={(e) => setEditForm((f) => ({ ...f, is_active: e.target.checked }))} className="w-5 h-5 rounded" />
+                    <span className="text-sm font-bold">مورد نشط</span>
+                  </label>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button type="submit" disabled={editSaving} className="flex-1">
+                    {editSaving ? "جاري الحفظ..." : "حفظ التعديلات"}
+                  </Button>
+                  <Button type="button" variant="ghost" className="flex-1" disabled={editSaving} onClick={() => setShowEditModal(false)}>
+                    إلغاء
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </AdminPasswordGate>
   );

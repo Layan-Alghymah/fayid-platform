@@ -5,6 +5,7 @@ import { AdminPasswordGate } from "@/components/admin/AdminPasswordGate";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import {
   ChevronLeft,
   Plus,
@@ -44,6 +45,7 @@ const defaultForm = {
 };
 
 export default function AdminSuppliers() {
+  const { toast } = useToast();
   const [suppliers, setSuppliers] = useState<SupplierWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -89,10 +91,34 @@ export default function AdminSuppliers() {
 
   const handleDelete = async (supplierId: number) => {
     setDeleting(true);
-    await adminSupabase.from("products").delete().eq("supplier_id", supplierId);
-    await adminSupabase.from("suppliers").delete().eq("id", supplierId);
+
+    // Step 1: delete all products for this supplier
+    const { error: prodErr } = await adminSupabase
+      .from("products")
+      .delete()
+      .eq("supplier_id", supplierId);
+
+    if (prodErr) {
+      toast({ title: "خطأ", description: `فشل حذف المنتجات: ${prodErr.message}`, variant: "destructive" });
+      setDeleting(false);
+      return;
+    }
+
+    // Step 2: delete the supplier
+    const { error: suppErr } = await adminSupabase
+      .from("suppliers")
+      .delete()
+      .eq("id", supplierId);
+
+    if (suppErr) {
+      toast({ title: "خطأ", description: `فشل حذف المورد: ${suppErr.message}`, variant: "destructive" });
+      setDeleting(false);
+      return;
+    }
+
     setDeleteConfirm(null);
     setDeleting(false);
+    toast({ title: "تم الحذف", description: "تم حذف المورد وجميع منتجاته بنجاح" });
     await loadSuppliers();
   };
 

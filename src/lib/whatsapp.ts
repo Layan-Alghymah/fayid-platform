@@ -65,19 +65,17 @@ export function buildWhatsAppOrderMessage(
   lines.push("");
 
   const supplierGroups = groupCartBySupplier(items);
-  let overallSubtotal = 0;
-  let overallShipping = 0;
+  let grandTotal = 0;
+  let totalShipping = 0;
 
   for (const [supplier, supplierItems] of supplierGroups) {
     lines.push(`المتجر: ${supplier}`);
     lines.push("");
 
-    let supplierSubtotal = 0;
-
     supplierItems.forEach((item, index) => {
       const unitPrice = item.product.price;
       const lineTotal = unitPrice * item.quantity;
-      supplierSubtotal += lineTotal;
+      grandTotal += lineTotal;
 
       lines.push(`${index + 1}. المنتج: ${item.product.name}`);
       lines.push(`   الكمية: ${item.quantity}`);
@@ -85,22 +83,19 @@ export function buildWhatsAppOrderMessage(
       lines.push(`   الإجمالي: ${formatSar(lineTotal)}`);
       lines.push("");
     });
-
-    const supplierShipping = shippingMap[supplier] ?? 30;
-    lines.push(`المجموع الفرعي للمتجر: ${formatSar(supplierSubtotal)}`);
-    lines.push(`رسوم الشحن: ${formatSar(supplierShipping)}`);
-    lines.push(`إجمالي المتجر: ${formatSar(supplierSubtotal + supplierShipping)}`);
-    lines.push("");
-
-    overallSubtotal += supplierSubtotal;
-    overallShipping += supplierShipping;
   }
 
+  const shippingTotal = Object.values(shippingMap).reduce((a, b) => a + b, 0);
+  totalShipping = shippingTotal || supplierGroups.size * 30;
+
   lines.push("─────────────────────");
-  lines.push(`المجموع الفرعي: ${formatSar(overallSubtotal)}`);
-  lines.push(`إجمالي الشحن: ${formatSar(overallShipping)}`);
-  lines.push(`الإجمالي الكلي: ${formatSar(overallSubtotal + overallShipping)}`);
-  lines.push(`طريقة الدفع: ${PAYMENT_LABELS[paymentMethod] ?? paymentMethod}`);
+  lines.push("");
+  lines.push(`إجمالي الشحن: ${totalShipping} ر.س`);
+  lines.push(`رسوم المنصة: مجاناً`);
+  lines.push(`الإجمالي الكلي: ${grandTotal + totalShipping} ر.س`);
+  lines.push("");
+  lines.push("طريقة الدفع:");
+  lines.push(PAYMENT_LABELS[paymentMethod] ?? paymentMethod);
 
   return lines.join("\n");
 }
