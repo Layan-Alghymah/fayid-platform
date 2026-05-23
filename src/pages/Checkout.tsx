@@ -1,18 +1,20 @@
 import { Layout } from "@/components/Layout";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CheckCircle2, ChevronRight, ChevronLeft,
   User, MapPin, Truck, CreditCard, ClipboardList,
-  Package, Building2, Bike,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { buildWhatsAppOrderMessage, openWhatsAppOrder } from "@/lib/whatsapp";
+import type { CartItem } from "@/hooks/useCart";
 
 // ─── Zod schemas per step ────────────────────────────────────────────────────
 
@@ -35,28 +37,21 @@ const addressSchema = z.object({
   notes: z.string().optional().or(z.literal("")),
 });
 
-const shippingSchema = z.object({
-  shippingMethod: z.string().min(1, "يرجى اختيار طريقة الشحن"),
-});
-
 const paymentSchema = z.object({
-  paymentMethod: z.enum(["mada", "tabby", "cod"] as const, {
+  paymentMethod: z.enum(["cod", "bank_transfer"] as const, {
     errorMap: () => ({ message: "يرجى اختيار طريقة الدفع" }),
   }),
 });
 
-const fullSchema = customerSchema
-  .merge(addressSchema)
-  .merge(shippingSchema)
-  .merge(paymentSchema);
+const fullSchema = customerSchema.merge(addressSchema).merge(paymentSchema);
 
 type CheckoutForm = z.infer<typeof fullSchema>;
 
-// Fields validated on "Next" per step
+// Fields validated on "Next" per step (step 3 is informational, no required fields)
 const STEP_FIELDS: Record<number, (keyof CheckoutForm)[]> = {
   1: ["name", "phone", "email"],
   2: ["region", "city", "neighborhood", "detailedAddress", "nationalAddress"],
-  3: ["shippingMethod"],
+  3: [],
   4: ["paymentMethod"],
 };
 
@@ -78,59 +73,38 @@ const SAUDI_REGIONS = [
   "الحدود الشمالية",
 ];
 
-const SHIPPING_OPTIONS = [
-  {
-    id: "aramex",
-    type: "company",
-    name: "أرامكس",
-    subtitle: "شحن سريع بضمان التوصيل",
-    price: 25,
-    deliveryTime: "2-3 أيام عمل",
-    Icon: Building2,
-  },
-  {
-    id: "smsa",
-    type: "company",
-    name: "SMSA سمسا",
-    subtitle: "شحن موثوق في جميع المناطق",
-    price: 20,
-    deliveryTime: "2-4 أيام عمل",
-    Icon: Package,
-  },
-  {
-    id: "local",
-    type: "local",
-    name: "مندوب محلي",
-    subtitle: "توصيل داخل نفس المدينة",
-    price: 15,
-    deliveryTime: "نفس اليوم أو اليوم التالي",
-    Icon: Bike,
-  },
-] as const;
-
 const PAYMENT_OPTIONS = [
-  {
-    id: "mada" as const,
-    name: "مدى",
-    subtitle: "بطاقة مدى أو بطاقة ائتمانية",
-    Icon: CreditCard,
-    badge: null,
-  },
-  {
-    id: "tabby" as const,
-    name: "تمارا / تمويلية",
-    subtitle: "قسّط مشترياتك بدون فوائد",
-    Icon: null,
-    badge: "تمارا",
-  },
   {
     id: "cod" as const,
     name: "الدفع عند الاستلام",
     subtitle: "ادفع نقداً عند استلام الطلب",
-    Icon: Truck,
-    badge: null,
+    disabled: false,
   },
-];
+  {
+    id: "bank_transfer" as const,
+    name: "تحويل بنكي",
+    subtitle: "تحويل مباشر لحساب المورد",
+    disabled: false,
+  },
+  {
+    id: "mada" as const,
+    name: "مدى",
+    subtitle: "بطاقة مدى أو ائتمانية",
+    disabled: true,
+  },
+  {
+    id: "apple_pay" as const,
+    name: "Apple Pay",
+    subtitle: "الدفع عبر Apple Pay",
+    disabled: true,
+  },
+  {
+    id: "google_pay" as const,
+    name: "Google Pay",
+    subtitle: "الدفع عبر Google Pay",
+    disabled: true,
+  },
+] as const;
 
 const STEPS = [
   { id: 1, label: "معلومات العميل", Icon: User },
@@ -140,12 +114,19 @@ const STEPS = [
   { id: 5, label: "المراجعة", Icon: ClipboardList },
 ];
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getSupplierNameFromItem(item: CartItem): string {
+  const p = item.product as CartItem["product"] & { supplier_name?: string };
+  return p.supplierName?.trim() || p.supplier_name?.trim() || "مورد غير محدد";
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Checkout() {
   const { cart, loading: cartLoading } = useCart();
   const [step, setStep] = useState(1);
-  const [, setLocation] = useLocation();
+  const [supplierCities, setSupplierCities] = useState<Record<string, string>>({});
 
   const {
     register,
@@ -156,8 +137,7 @@ export default function Checkout() {
   } = useForm<CheckoutForm>({
     resolver: zodResolver(fullSchema),
     defaultValues: {
-      paymentMethod: "mada",
-      shippingMethod: "",
+      paymentMethod: "cod",
       region: "",
       email: "",
       postalCode: "",
@@ -165,14 +145,55 @@ export default function Checkout() {
     },
   });
 
-  const shippingMethod = watch("shippingMethod");
   const paymentMethod = watch("paymentMethod");
-  const selectedShipping = SHIPPING_OPTIONS.find((s) => s.id === shippingMethod);
-  const selectedPayment = PAYMENT_OPTIONS.find((p) => p.id === paymentMethod);
+  const customerCity = watch("city") ?? "";
+
+  // Unique supplier names from cart
+  const supplierNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const item of cart?.items ?? []) {
+      names.add(getSupplierNameFromItem(item));
+    }
+    return [...names];
+  }, [cart?.items]);
+
+  // Fetch supplier cities when entering step 3
+  useEffect(() => {
+    if (step !== 3 || supplierNames.length === 0) return;
+    supabase
+      .from("suppliers")
+      .select("name, city")
+      .in("name", supplierNames)
+      .then(({ data }) => {
+        const map: Record<string, string> = {};
+        for (const s of data ?? []) {
+          if (s.name && s.city) map[s.name] = s.city;
+        }
+        setSupplierCities(map);
+      });
+  }, [step]);
+
+  // Per-supplier shipping: same city = 20 SAR, different/unknown = 30 SAR
+  const shippingMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const name of supplierNames) {
+      const supCity = (supplierCities[name] ?? "").trim();
+      const custCity = customerCity.trim();
+      map[name] = supCity && custCity && supCity === custCity ? 20 : 30;
+    }
+    return map;
+  }, [supplierNames, supplierCities, customerCity]);
+
+  const subtotal = cart?.total ?? 0;
+  const shippingPrice = Object.values(shippingMap).reduce((a, b) => a + b, 0);
+  const total = subtotal + shippingPrice;
+
+  const selectedPaymentLabel =
+    PAYMENT_OPTIONS.find((p) => p.id === paymentMethod)?.name ?? "—";
 
   const goNext = async () => {
     const fields = STEP_FIELDS[step];
-    if (fields) {
+    if (fields && fields.length > 0) {
       const valid = await trigger(fields as any);
       if (!valid) return;
     }
@@ -185,34 +206,25 @@ export default function Checkout() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const subtotal = cart?.total ?? 0;
-  const shippingPrice = selectedShipping?.price ?? 0;
-  const total = subtotal + shippingPrice;
-
   const handleWhatsAppSubmit = () => {
-    const phone = "966559433431";
     const values = getValues();
-    const name = values.name?.trim() || "غير محدد";
-    const customerPhone = values.phone?.trim() || "غير محدد";
+    const cityAddress = [values.city, values.neighborhood, values.detailedAddress]
+      .filter(Boolean)
+      .join("، ");
 
-    const productLines = (cart?.items ?? [])
-      .map((item) => `• ${item?.product?.name ?? "منتج"} (الكمية: ${item?.quantity ?? 1})`)
-      .join("\n");
+    const message = buildWhatsAppOrderMessage(
+      cart?.items ?? [],
+      {
+        name: values.name?.trim() || "غير محدد",
+        phone: values.phone?.trim() || "غير محدد",
+        cityAddress,
+        notes: values.notes?.trim(),
+      },
+      shippingMap,
+      values.paymentMethod
+    );
 
-    const message = [
-      "طلب جديد من فائض",
-      "",
-      `الاسم: ${name}`,
-      `الجوال: ${customerPhone}`,
-      "",
-      "المنتجات:",
-      productLines,
-      "",
-      `الإجمالي: ${total} ر.س`,
-    ].join("\n");
-
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.location.href = url;
+    openWhatsAppOrder(message);
   };
 
   if (cartLoading) {
@@ -404,34 +416,46 @@ export default function Checkout() {
             </div>
           )}
 
-          {/* STEP 3 – Shipping */}
+          {/* STEP 3 – Shipping (auto-calculated per supplier) */}
           {step === 3 && (
             <div className="glass-panel rounded-2xl p-6 space-y-4 animate-in fade-in duration-300">
-              <SectionHeader icon={<Truck className="w-5 h-5 text-primary" />} title="طريقة الشحن" />
+              <SectionHeader icon={<Truck className="w-5 h-5 text-primary" />} title="تفاصيل الشحن" />
 
-              <GroupLabel>شركة شحن</GroupLabel>
-              {SHIPPING_OPTIONS.filter((o) => o.type === "company").map((option) => (
-                <ShippingCard
-                  key={option.id}
-                  option={option}
-                  selected={shippingMethod === option.id}
-                  register={register}
-                />
-              ))}
+              <p className="text-sm text-muted-foreground">
+                رسوم الشحن تُحسَب تلقائياً لكل مورد بناءً على المدينة.
+              </p>
 
-              <GroupLabel>مندوب محلي</GroupLabel>
-              {SHIPPING_OPTIONS.filter((o) => o.type === "local").map((option) => (
-                <ShippingCard
-                  key={option.id}
-                  option={option}
-                  selected={shippingMethod === option.id}
-                  register={register}
-                />
-              ))}
+              <div className="space-y-3">
+                {supplierNames.map((name) => {
+                  const supCity = supplierCities[name] ?? "";
+                  const custCity = customerCity.trim();
+                  const sameCity = supCity && custCity && supCity === custCity;
+                  const fee = shippingMap[name] ?? 30;
+                  return (
+                    <div
+                      key={name}
+                      className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-background/30"
+                    >
+                      <div>
+                        <p className="font-bold text-sm">{name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {supCity
+                            ? sameCity
+                              ? `نفس المدينة (${supCity})`
+                              : `شحن خارج المدينة`
+                            : "يتم تحديد المدينة تلقائياً"}
+                        </p>
+                      </div>
+                      <p className="font-black text-primary text-base">{formatPrice(fee)}</p>
+                    </div>
+                  );
+                })}
+              </div>
 
-              {errors.shippingMethod && (
-                <p className="text-destructive text-xs">{errors.shippingMethod.message}</p>
-              )}
+              <div className="border-t border-white/10 pt-3 flex justify-between text-sm font-bold">
+                <span>إجمالي الشحن</span>
+                <span className="text-primary">{formatPrice(shippingPrice)}</span>
+              </div>
             </div>
           )}
 
@@ -442,44 +466,35 @@ export default function Checkout() {
 
               <div className="space-y-3">
                 {PAYMENT_OPTIONS.map((option) => {
-                  const selected = paymentMethod === option.id;
+                  const selected = !option.disabled && paymentMethod === option.id;
                   return (
                     <label
                       key={option.id}
-                      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                        selected
-                          ? "border-primary bg-primary/10"
-                          : "border-white/10 hover:border-white/25"
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
+                        option.disabled
+                          ? "border-white/5 opacity-50 cursor-not-allowed"
+                          : selected
+                          ? "border-primary bg-primary/10 cursor-pointer"
+                          : "border-white/10 hover:border-white/25 cursor-pointer"
                       }`}
                     >
                       <input
                         type="radio"
                         value={option.id}
-                        {...register("paymentMethod")}
+                        disabled={option.disabled}
+                        {...(!option.disabled ? register("paymentMethod") : {})}
                         className="sr-only"
                       />
                       <RadioDot selected={selected} />
-
-                      {option.badge ? (
-                        <span
-                          className={`text-sm font-black px-2 py-1 rounded-lg ${
-                            selected
-                              ? "text-primary bg-primary/20"
-                              : "text-muted-foreground bg-white/5"
-                          }`}
-                        >
-                          {option.badge}
-                        </span>
-                      ) : option.Icon ? (
-                        <option.Icon
-                          className={`w-5 h-5 flex-shrink-0 ${
-                            selected ? "text-primary" : "text-muted-foreground"
-                          }`}
-                        />
-                      ) : null}
-
                       <div className="flex-1">
-                        <p className="font-bold text-sm">{option.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-sm">{option.name}</p>
+                          {option.disabled && (
+                            <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
+                              قريباً
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">{option.subtitle}</p>
                       </div>
                     </label>
@@ -502,42 +517,59 @@ export default function Checkout() {
                   title="ملخص الطلب"
                 />
 
-                {/* Product list */}
-                <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pl-1">
-                  {cart.items.map((item) => (
-                    <div key={item.productId} className="flex items-center gap-3">
-                      <img
-                        src={
-                          item.product.imageUrl ||
-                          "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=80&h=80&fit=crop"
-                        }
-                        className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
-                        alt={item.product.name}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">{item.product.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          الكمية: {item.quantity}
+                {/* Product list grouped by supplier */}
+                <div className="space-y-4">
+                  {supplierNames.map((supplierName) => {
+                    const supplierItems = (cart.items ?? []).filter(
+                      (item) => getSupplierNameFromItem(item) === supplierName
+                    );
+                    const supplierSubtotal = supplierItems.reduce(
+                      (sum, item) => sum + item.product.price * item.quantity,
+                      0
+                    );
+                    const supplierShipping = shippingMap[supplierName] ?? 30;
+                    return (
+                      <div key={supplierName} className="space-y-2">
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                          {supplierName}
                         </p>
+                        {supplierItems.map((item) => (
+                          <div key={item.productId} className="flex items-center gap-3">
+                            <img
+                              src={
+                                item.product.imageUrl ||
+                                "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=80&h=80&fit=crop"
+                              }
+                              className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                              alt={item.product.name}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">{item.product.name}</p>
+                              <p className="text-xs text-muted-foreground">الكمية: {item.quantity}</p>
+                            </div>
+                            <p className="font-bold text-primary text-sm whitespace-nowrap">
+                              {formatPrice(item.product.price * item.quantity)}
+                            </p>
+                          </div>
+                        ))}
+                        <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-white/5">
+                          <span>شحن هذا المورد</span>
+                          <span>{formatPrice(supplierShipping)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold">
+                          <span>إجمالي المورد</span>
+                          <span>{formatPrice(supplierSubtotal + supplierShipping)}</span>
+                        </div>
                       </div>
-                      <p className="font-bold text-primary text-sm whitespace-nowrap">
-                        {formatPrice(item.product.price * item.quantity)}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Price breakdown */}
                 <div className="border-t border-white/10 pt-4 space-y-3 text-sm">
                   <SummaryRow label="المجموع الفرعي" value={formatPrice(subtotal)} />
-                  <SummaryRow
-                    label={`رسوم الشحن (${selectedShipping?.name ?? "—"})`}
-                    value={shippingPrice > 0 ? formatPrice(shippingPrice) : "—"}
-                  />
-                  <SummaryRow
-                    label="طريقة الدفع"
-                    value={selectedPayment?.name ?? "—"}
-                  />
+                  <SummaryRow label="إجمالي الشحن" value={formatPrice(shippingPrice)} />
+                  <SummaryRow label="طريقة الدفع" value={selectedPaymentLabel} />
                   <div className="flex justify-between font-black text-lg border-t border-white/10 pt-3">
                     <span>الإجمالي</span>
                     <span className="text-primary">{formatPrice(total)}</span>
@@ -597,14 +629,6 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
   );
 }
 
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold pt-1">
-      {children}
-    </p>
-  );
-}
-
 function Field({
   label,
   required,
@@ -642,46 +666,6 @@ function RadioDot({ selected }: { selected: boolean }) {
     >
       {selected && <div className="w-2.5 h-2.5 bg-primary rounded-full" />}
     </div>
-  );
-}
-
-function ShippingCard({
-  option,
-  selected,
-  register,
-}: {
-  option: (typeof SHIPPING_OPTIONS)[number];
-  selected: boolean;
-  register: ReturnType<typeof useForm<CheckoutForm>>["register"];
-}) {
-  const { Icon } = option;
-  return (
-    <label
-      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-        selected ? "border-primary bg-primary/10" : "border-white/10 hover:border-white/25"
-      }`}
-    >
-      <input
-        type="radio"
-        value={option.id}
-        {...register("shippingMethod")}
-        className="sr-only"
-      />
-      <RadioDot selected={selected} />
-      <Icon
-        className={`w-6 h-6 flex-shrink-0 ${selected ? "text-primary" : "text-muted-foreground"}`}
-      />
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-sm">{option.name}</p>
-        <p className="text-xs text-muted-foreground truncate">{option.subtitle}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">⏱ {option.deliveryTime}</p>
-      </div>
-      <div className="text-left flex-shrink-0">
-        <p className={`font-black text-base ${selected ? "text-primary" : ""}`}>
-          {formatPrice(option.price)}
-        </p>
-      </div>
-    </label>
   );
 }
 

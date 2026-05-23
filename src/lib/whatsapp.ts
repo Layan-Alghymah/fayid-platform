@@ -10,6 +10,11 @@ export type WhatsAppCheckoutCustomer = {
   notes?: string;
 };
 
+const PAYMENT_LABELS: Record<string, string> = {
+  cod: "الدفع عند الاستلام (كاش)",
+  bank_transfer: "تحويل بنكي",
+};
+
 function formatSar(amount: number): string {
   return `${amount.toLocaleString("ar-SA")} ر.س`;
 }
@@ -36,10 +41,14 @@ function groupCartBySupplier(items: CartItem[]): Map<string, CartItem[]> {
 
 /**
  * Builds the Arabic WhatsApp order message (grouped by supplier/store).
+ * @param shippingMap - per-supplier shipping cost (supplierName → SAR)
+ * @param paymentMethod - "cod" | "bank_transfer"
  */
 export function buildWhatsAppOrderMessage(
   items: CartItem[],
-  customer: WhatsAppCheckoutCustomer
+  customer: WhatsAppCheckoutCustomer,
+  shippingMap: Record<string, number> = {},
+  paymentMethod = "cod"
 ): string {
   const lines: string[] = [];
   lines.push("طلب جديد من منصة فائض");
@@ -56,7 +65,8 @@ export function buildWhatsAppOrderMessage(
   lines.push("");
 
   const supplierGroups = groupCartBySupplier(items);
-  let overallTotal = 0;
+  let overallSubtotal = 0;
+  let overallShipping = 0;
 
   for (const [supplier, supplierItems] of supplierGroups) {
     lines.push(`المتجر: ${supplier}`);
@@ -76,15 +86,21 @@ export function buildWhatsAppOrderMessage(
       lines.push("");
     });
 
-    lines.push(`إجمالي متجر ${supplier}: ${formatSar(supplierSubtotal)}`);
+    const supplierShipping = shippingMap[supplier] ?? 30;
+    lines.push(`المجموع الفرعي للمتجر: ${formatSar(supplierSubtotal)}`);
+    lines.push(`رسوم الشحن: ${formatSar(supplierShipping)}`);
+    lines.push(`إجمالي المتجر: ${formatSar(supplierSubtotal + supplierShipping)}`);
     lines.push("");
-    overallTotal += supplierSubtotal;
+
+    overallSubtotal += supplierSubtotal;
+    overallShipping += supplierShipping;
   }
 
-  lines.push(`الإجمالي الكلي: ${formatSar(overallTotal)}`);
-  lines.push("");
-  lines.push("ملاحظة الشحن:");
-  lines.push("سيتم تأكيد تكلفة الشحن وموعد التوصيل عبر الواتساب.");
+  lines.push("─────────────────────");
+  lines.push(`المجموع الفرعي: ${formatSar(overallSubtotal)}`);
+  lines.push(`إجمالي الشحن: ${formatSar(overallShipping)}`);
+  lines.push(`الإجمالي الكلي: ${formatSar(overallSubtotal + overallShipping)}`);
+  lines.push(`طريقة الدفع: ${PAYMENT_LABELS[paymentMethod] ?? paymentMethod}`);
 
   return lines.join("\n");
 }

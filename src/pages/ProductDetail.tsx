@@ -4,9 +4,10 @@ import { useProduct } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice, calculateDiscount, translateDiscountReason } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, ShieldCheck, Tag, Box, ArrowRight } from "lucide-react";
+import { ShoppingCart, ShieldCheck, Tag, Box } from "lucide-react";
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
+import { HomeBackLink } from "@/components/HomeBackLink";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ProductDetail() {
@@ -61,10 +62,20 @@ export default function ProductDetail() {
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
-        <button onClick={() => window.history.back()} className="flex items-center text-muted-foreground hover:text-foreground mb-8 transition-colors">
-          <ArrowRight className="w-4 h-4 ml-2" />
-          عودة
-        </button>
+        <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-8" aria-label="مسار التنقل">
+          <Link href="/" className="hover:text-primary transition-colors font-medium">
+            الرئيسية
+          </Link>
+          <span className="opacity-50">/</span>
+          <Link href="/products" className="hover:text-primary transition-colors font-medium">
+            المنتجات
+          </Link>
+          <span className="opacity-50">/</span>
+          <span className="text-foreground truncate max-w-[200px]">{product.name}</span>
+        </nav>
+        <div className="mb-6 md:hidden">
+          <HomeBackLink />
+        </div>
 
         <div className="flex flex-col md:flex-row gap-12">
           {/* Image Gallery */}
@@ -87,7 +98,7 @@ export default function ProductDetail() {
           <div className="w-full md:w-1/2 flex flex-col">
             <div className="mb-2">
               <span className="text-primary font-semibold text-sm bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                {product.category === 'textiles' ? 'أقمشة' : 'ملابس'}
+                {product.category === 'textiles' ? 'أقمشة' : product.category === 'clothing' ? 'ملابس' : product.category}
               </span>
             </div>
             

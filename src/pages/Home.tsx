@@ -62,19 +62,11 @@ const FAQ_ITEMS = [
   },
   {
     q: "كيف يتم الشحن؟",
-    a: "يتولى المورد مباشرةً تجهيز وشحن الطلب. رسوم الشحن تختلف حسب المورد والمنطقة الجغرافية وتُوضَّح عند الطلب.",
+    a: "يتولى المورد مباشرةً تجهيز وشحن الطلب. تُحسَب رسوم الشحن حسب مدينة المورد ومدينة العميل وتُعرض تفصيلياً عند إتمام الطلب.",
   },
   {
-    q: "كيف يتم الدفع؟",
-    a: "حالياً يتم التنسيق مع المورد مباشرةً عبر واتساب لإتمام الدفع. نعمل على توفير خيارات دفع إلكتروني متكاملة قريباً.",
-  },
-  {
-    q: "هل يمكن للموردين الانضمام؟",
-    a: "بالتأكيد! يمكن لأي مورد أو مصنع أو متجر لديه مخزون فائض التقديم للانضمام عبر صفحة \"انضم كمورد\". يراجع فريق فائض الطلب ويتواصل معك.",
-  },
-  {
-    q: "هل توجد عمولة؟",
-    a: "لا توجد عمولة خلال فترة الإطلاق الحالية. نهدف إلى بناء شراكات حقيقية مع الموردين أولاً، ونُعلن عن الخطط التجارية لاحقاً.",
+    q: "كيف يمكنني الانضمام كمورد؟",
+    a: "يمكن لأي مورد أو مصنع أو متجر لديه مخزون فائض التقديم للانضمام عبر صفحة \"انضم كمورد\". يراجع فريق فائض الطلب ويتواصل معك.",
   },
 ];
 
@@ -270,38 +262,45 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Trusted Suppliers ── */}
+      {/* ── Trusted Suppliers — infinite marquee ── */}
       {suppliers.length > 0 && (
-        <section className="py-20 border-y border-white/5">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-3">شركاؤنا</p>
-              <h2 className="text-3xl font-black mb-2">علامات تثق بمنصة فائض</h2>
-              <p className="text-muted-foreground max-w-lg mx-auto text-sm">
-                موردون معتمدون يساهمون في تقليل الهدر وتعزيز الاستدامة
-              </p>
-            </div>
+        <section className="py-20 border-y border-white/5 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 text-center">
+            <p className="text-xs uppercase tracking-[0.3em] text-primary font-bold mb-3">شركاؤنا</p>
+            <h2 className="text-3xl font-black mb-2">علامات تثق بمنصة فائض</h2>
+            <p className="text-muted-foreground max-w-lg mx-auto text-sm">
+              موردون معتمدون يساهمون في تقليل الهدر وتعزيز الاستدامة
+            </p>
+          </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-              {suppliers.map((s) => (
+          <div className="relative">
+            {/* Fade edges */}
+            <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+            <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+
+            {/* Marquee track — items duplicated for seamless loop */}
+            <div
+              className="flex gap-5 w-max"
+              style={{ animation: "marquee 22s linear infinite" }}
+            >
+              {[...suppliers, ...suppliers].map((s, i) => (
                 <div
-                  key={s.id}
-                  className="glass-panel rounded-2xl p-5 flex flex-col items-center gap-3 hover:border-primary/30 border border-transparent transition-colors"
+                  key={i}
+                  className="flex-shrink-0 flex flex-col items-center justify-center gap-2.5 px-8 py-5 rounded-2xl border border-white/8 bg-white/3 backdrop-blur-sm min-w-[160px] hover:border-primary/30 transition-colors"
                 >
-                  {/* Try logo from /images/suppliers/{id}.png */}
-                  <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden">
+                  {/* First letter always visible; image overlays if it loads */}
+                  <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center overflow-hidden relative text-primary font-black text-lg">
+                    <span>{s.name[0]}</span>
                     <img
                       src={`/images/suppliers/${s.id}.png`}
-                      alt={s.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Show icon fallback if no logo
-                        e.currentTarget.style.display = "none";
-                        e.currentTarget.parentElement!.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-primary"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
-                      }}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
                     />
                   </div>
-                  <p className="font-bold text-sm text-center leading-tight">{s.name}</p>
+                  <p className="font-bold text-sm text-center leading-tight whitespace-nowrap">
+                    {s.name}
+                  </p>
                 </div>
               ))}
             </div>
@@ -383,7 +382,7 @@ export default function Home() {
           <div className="flex justify-center">
             <SupplierJoinLink
               size="lg"
-              className="bg-white text-secondary hover:bg-white/90 text-lg font-bold px-10 h-14"
+              className="bg-white text-[#0F3D4F] hover:bg-white/90 text-lg font-bold px-10 h-14"
             >
               انضم كمورد
             </SupplierJoinLink>

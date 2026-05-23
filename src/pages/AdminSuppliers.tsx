@@ -13,6 +13,7 @@ import {
   MapPin,
   CheckCircle2,
   XCircle,
+  Trash2,
 } from "lucide-react";
 
 interface SupplierWithCount extends Supplier {
@@ -51,6 +52,8 @@ export default function AdminSuppliers() {
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
   const [newSupplierId, setNewSupplierId] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function loadSuppliers() {
     setLoading(true);
@@ -83,6 +86,15 @@ export default function AdminSuppliers() {
   useEffect(() => {
     loadSuppliers();
   }, []);
+
+  const handleDelete = async (supplierId: number) => {
+    setDeleting(true);
+    await adminSupabase.from("products").delete().eq("supplier_id", supplierId);
+    await adminSupabase.from("suppliers").delete().eq("id", supplierId);
+    setDeleteConfirm(null);
+    setDeleting(false);
+    await loadSuppliers();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,18 +340,58 @@ export default function AdminSuppliers() {
                     </div>
                   </div>
 
-                  {/* Action */}
-                  <Link href={`/admin/suppliers/${s.id}`}>
-                    <Button variant="outline" size="sm" className="gap-1 flex-shrink-0">
-                      فتح صفحة المورد
-                      <ChevronLeft className="w-4 h-4" />
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Link href={`/admin/suppliers/${s.id}`}>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        فتح صفحة المورد
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 px-2"
+                      onClick={() => setDeleteConfirm(s.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
-                  </Link>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </main>
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirm !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <div className="glass-panel rounded-2xl p-6 max-w-sm w-full space-y-4">
+              <h3 className="text-lg font-bold text-destructive">حذف المورد</h3>
+              <p className="text-sm text-muted-foreground">
+                هل أنت متأكد من حذف هذا المورد؟ سيتم حذف جميع منتجاته أيضاً ولا يمكن التراجع.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={deleting}
+                  onClick={() => handleDelete(deleteConfirm)}
+                >
+                  {deleting ? "جاري الحذف..." : "نعم، احذف"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  disabled={deleting}
+                  onClick={() => setDeleteConfirm(null)}
+                >
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminPasswordGate>
   );

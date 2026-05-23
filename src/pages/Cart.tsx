@@ -100,13 +100,19 @@ export default function Cart() {
                     <span>المجموع الفرعي</span>
                     <span>{formatPrice(cart.total)}</span>
                   </div>
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>رسوم المنصة (10%)</span>
-                    <span>{formatPrice(cart.total * 0.1)}</span>
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>رسوم المنصة</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="line-through text-xs opacity-50">{formatPrice(cart.total * 0.1)}</span>
+                      <span className="text-green-500 font-bold text-xs">مجاناً حالياً</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground/60 text-left">
+                    * رسوم الشحن تُحسَب في الطلب
                   </div>
                   <div className="border-t border-white/10 pt-4 flex justify-between font-bold text-xl text-foreground">
                     <span>الإجمالي</span>
-                    <span className="text-primary">{formatPrice(cart.total * 1.1)}</span>
+                    <span className="text-primary">{formatPrice(cart.total)}</span>
                   </div>
                 </div>
 

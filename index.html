@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Faed Platform — منصة فائض</title>
     <link id="dynamic-favicon" rel="icon" type="image/png" href="/logo-dark.png" />
+    <script>
+      // Pick favicon on first paint: stored theme takes priority, then system preference
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var dark = stored
+            ? stored !== 'light'
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var el = document.getElementById('dynamic-favicon');
+          if (el) el.href = dark ? '/logo-dark.png' : '/logo-light.png';
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

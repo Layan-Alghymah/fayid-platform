@@ -1,0 +1,4 @@
+supplier_name,supplier_email,name,description,category,price,original_price,quantity,image_url,discount_reason,sizes,brand,is_active
+Al Noor Trading,alnoor@supplier.fayid.com,Men's Slim Jeans,Classic slim-fit denim jeans,Clothing,49.99,89.99,100,https://example.com/jeans.jpg,End of season clearance,30,32,34,Levi's,true
+Al Noor Trading,,Women's Sneakers,,Footwear,35.00,60.00,50,,Overstock,36,37,38,Nike,true
+Gulf Supplies,,Wireless Headphones,Noise-cancelling Bluetooth headphones,Electronics,79.99,149.99,30,https://example.com/headphones.jpg,Display model,,Sony,true
