@@ -173,14 +173,14 @@ export default function AdminSupplierDetail() {
       const safeName = logoFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `logos/${Date.now()}-${safeName}`;
       const { data: uploadData, error: uploadError } = await adminSupabase.storage
-        .from("image_url")
-        .upload(path, logoFile, { upsert: false });
+        .from("supplier-logos")
+        .upload(path, logoFile, { upsert: true, contentType: logoFile.type });
       if (uploadError) {
         toast({ title: "خطأ", description: `فشل رفع الشعار: ${uploadError.message}`, variant: "destructive" });
         setEditSaving(false);
         return;
       }
-      const { data: urlData } = adminSupabase.storage.from("image_url").getPublicUrl(uploadData.path);
+      const { data: urlData } = adminSupabase.storage.from("supplier-logos").getPublicUrl(uploadData.path);
       logoUrl = urlData.publicUrl;
     }
 

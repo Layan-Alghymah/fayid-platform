@@ -77,7 +77,7 @@ export default function Home() {
     queryFn: async () => {
       const { data } = await supabase
         .from("suppliers")
-        .select("id, name, type")
+        .select("id, name, type, logo_url")
         .eq("is_active", true)
         .order("id");
       return (data ?? []) as Supplier[];
@@ -271,15 +271,20 @@ export default function Home() {
                   key={i}
                   className="flex-shrink-0 flex flex-col items-center justify-center gap-2.5 px-8 py-5 rounded-2xl border border-white/8 bg-white/3 backdrop-blur-sm min-w-[160px] hover:border-primary/30 transition-colors"
                 >
-                  {/* First letter always visible; image overlays if it loads */}
+                  {/* Logo from DB or first-letter fallback */}
                   <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center overflow-hidden relative text-primary font-black text-lg">
-                    <span>{s.name[0]}</span>
-                    <img
-                      src={`/images/suppliers/${s.id}.png`}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover"
-                      onError={(e) => { e.currentTarget.style.display = "none"; }}
-                    />
+                    {s.logo_url ? (
+                      <img
+                        src={s.logo_url}
+                        alt={s.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <span>{s.name[0]}</span>
+                    )}
                   </div>
                   <p className="font-bold text-sm text-center leading-tight whitespace-nowrap">
                     {s.name}

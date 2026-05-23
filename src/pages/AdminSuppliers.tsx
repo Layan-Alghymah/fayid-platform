@@ -59,8 +59,6 @@ export default function AdminSuppliers() {
 
   async function loadSuppliers() {
     setLoading(true);
-    // Use adminSupabase to bypass RLS and avoid filtering by is_active.
-    // Order by id (always exists) instead of created_at which may be missing.
     const { data: suppData, error: suppError } = await adminSupabase
       .from("suppliers")
       .select("*")
@@ -92,61 +90,91 @@ export default function AdminSuppliers() {
   const handleDelete = async (supplierId: number) => {
     setDeleting(true);
 
-    // Step 1: delete all products for this supplier
+    // ── Step 1: delete all products for this supplier ──────────────────────
     const { error: prodErr, count: prodCount } = await adminSupabase
       .from("products")
       .delete({ count: "exact" })
       .eq("supplier_id", supplierId);
 
     if (prodErr) {
-      const isRls = prodErr.code === "42501" || prodErr.message?.includes("row-level security");
+      const isRls =
+        prodErr.code === "42501" ||
+        prodErr.message?.toLowerCase().includes("row-level security") ||
+        prodErr.message?.toLowerCase().includes("rls");
       toast({
-        title: "خطأ في الحذف",
+        title: "خطأ في حذف المنتجات",
         description: isRls
-          ? "مرفوض: RLS يمنع الحذف. تأكد من ضبط VITE_SUPABASE_SERVICE_KEY."
-          : `فشل حذف المنتجات: ${prodErr.message}`,
+          ? `مرفوض: RLS يمنع الحذف.\nSQL مطلوب:\nCREATE POLICY "admin_delete_products" ON products FOR DELETE USING (true);`
+          : `${prodErr.message}`,
         variant: "destructive",
       });
       setDeleting(false);
       return;
     }
 
-    // Step 2: delete the supplier
+    // ── Step 2: delete the supplier ────────────────────────────────────────
     const { error: suppErr, count: suppCount } = await adminSupabase
       .from("suppliers")
       .delete({ count: "exact" })
       .eq("id", supplierId);
 
     if (suppErr) {
-      const isRls = suppErr.code === "42501" || suppErr.message?.includes("row-level security");
+      const isRls =
+        suppErr.code === "42501" ||
+        suppErr.message?.toLowerCase().includes("row-level security") ||
+        suppErr.message?.toLowerCase().includes("rls") ||
+        suppErr.message?.toLowerCase().includes("foreign key");
       toast({
-        title: "خطأ في الحذف",
+        title: "خطأ في حذف المورد",
         description: isRls
-          ? "مرفوض: RLS يمنع الحذف. تأكد من ضبط VITE_SUPABASE_SERVICE_KEY."
-          : `فشل حذف المورد: ${suppErr.message}`,
+          ? `مرفوض: RLS يمنع الحذف.\nSQL مطلوب:\nCREATE POLICY "admin_delete_suppliers" ON suppliers FOR DELETE USING (true);`
+          : `${suppErr.message}`,
         variant: "destructive",
       });
       setDeleting(false);
       return;
     }
 
-    // Verify supplier was actually deleted (count=0 means RLS silently blocked it)
-    if (suppCount === 0) {
+    // count can be null when RLS blocks silently — treat null as 0
+    if ((suppCount ?? 0) < 1) {
       toast({
-        title: "تحذير",
-        description: "لم يُحذف المورد — قد يكون VITE_SUPABASE_SERVICE_KEY غير مضبوط.",
+        title: "فشل الحذف",
+        description:
+          "لم يُحذف المورد (0 صفوف متأثرة). تأكد من ضبط VITE_SUPABASE_SERVICE_KEY أو من وجود سياسة DELETE في RLS.",
         variant: "destructive",
       });
       setDeleting(false);
       setDeleteConfirm(null);
+      await loadSuppliers();
       return;
     }
 
+    // ── Step 3: verify supplier is truly gone by re-fetching ───────────────
+    const { data: verifyRow } = await adminSupabase
+      .from("suppliers")
+      .select("id")
+      .eq("id", supplierId)
+      .maybeSingle();
+
+    if (verifyRow) {
+      toast({
+        title: "فشل التحقق",
+        description:
+          "المورد لا يزال موجوداً في قاعدة البيانات رغم استجابة الحذف. راجع سياسات RLS.",
+        variant: "destructive",
+      });
+      setDeleting(false);
+      setDeleteConfirm(null);
+      await loadSuppliers();
+      return;
+    }
+
+    // ── All good ───────────────────────────────────────────────────────────
     setDeleteConfirm(null);
     setDeleting(false);
     toast({
-      title: "تم الحذف",
-      description: `تم حذف المورد و${prodCount ?? 0} منتج بنجاح`,
+      title: "تم الحذف بنجاح",
+      description: `تم حذف المورد و${prodCount ?? 0} منتج من قاعدة البيانات.`,
     });
     await loadSuppliers();
   };
@@ -219,10 +247,7 @@ export default function AdminSuppliers() {
           {showForm && (
             <div className="glass-panel rounded-2xl p-6 mb-8">
               <h2 className="text-xl font-bold mb-6">إضافة مورد جديد</h2>
-              <form
-                onSubmit={handleSubmit}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-              >
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField label="اسم المورد" required>
                   <Input
                     value={form.name}
@@ -268,9 +293,7 @@ export default function AdminSuppliers() {
                     className="w-full bg-background/50 border border-border rounded-xl px-4 h-11 text-sm focus:outline-none focus:border-primary"
                   >
                     {SUPPLIER_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
+                      <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
                   </select>
                 </FormField>
@@ -280,9 +303,7 @@ export default function AdminSuppliers() {
                     <input
                       type="checkbox"
                       checked={form.is_active}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, is_active: e.target.checked }))
-                      }
+                      onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
                       className="w-5 h-5 rounded"
                     />
                     <span className="text-sm">مورد نشط</span>
@@ -341,9 +362,7 @@ export default function AdminSuppliers() {
             <div className="text-center py-20 glass-panel rounded-2xl">
               <Store className="w-14 h-14 text-muted-foreground mx-auto mb-4 opacity-30" />
               <p className="text-xl font-bold">لا يوجد موردون بعد</p>
-              <p className="text-muted-foreground text-sm mt-1">
-                أضف أول مورد باستخدام الزر أعلاه
-              </p>
+              <p className="text-muted-foreground text-sm mt-1">أضف أول مورد باستخدام الزر أعلاه</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -352,9 +371,18 @@ export default function AdminSuppliers() {
                   key={s.id}
                   className="glass-panel rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4"
                 >
-                  {/* Avatar */}
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Store className="w-6 h-6 text-primary" />
+                  {/* Logo / Avatar */}
+                  <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {s.logo_url ? (
+                      <img
+                        src={s.logo_url}
+                        alt={s.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <span className="text-primary font-black text-lg">{s.name[0]}</span>
+                    )}
                   </div>
 
                   {/* Info */}
@@ -373,25 +401,19 @@ export default function AdminSuppliers() {
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                       {s.type && (
-                        <span className="text-xs text-muted-foreground">
-                          {TYPE_LABELS[s.type] ?? s.type}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{TYPE_LABELS[s.type] ?? s.type}</span>
                       )}
                       {s.city && (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="w-3 h-3" />
-                          {s.city}
+                          <MapPin className="w-3 h-3" />{s.city}
                         </span>
                       )}
                       {s.whatsapp && (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Phone className="w-3 h-3" />
-                          {s.whatsapp}
+                          <Phone className="w-3 h-3" />{s.whatsapp}
                         </span>
                       )}
-                      <span className="text-xs text-muted-foreground">
-                        {s.productCount} منتج
-                      </span>
+                      <span className="text-xs text-muted-foreground">{s.productCount} منتج</span>
                     </div>
                   </div>
 
@@ -419,43 +441,45 @@ export default function AdminSuppliers() {
         </main>
 
         {/* Delete Confirmation Modal */}
-        {deleteConfirm !== null && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-            <div className="glass-panel rounded-2xl p-6 max-w-sm w-full space-y-4">
-              <h3 className="text-lg font-bold text-destructive">حذف المورد</h3>
-              <p className="text-sm text-muted-foreground">
-                هل أنت متأكد من حذف هذا المورد؟ سيتم حذف جميع منتجاته أيضاً ولا يمكن التراجع.
-              </p>
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  disabled={deleting}
-                  onClick={() => handleDelete(deleteConfirm)}
-                >
-                  {deleting ? "جاري الحذف..." : "نعم، احذف"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  disabled={deleting}
-                  onClick={() => setDeleteConfirm(null)}
-                >
-                  إلغاء
-                </Button>
+        {deleteConfirm !== null && (() => {
+          const target = suppliers.find((s) => s.id === deleteConfirm);
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+              <div className="glass-panel rounded-2xl p-6 max-w-sm w-full space-y-4">
+                <h3 className="text-lg font-bold text-destructive">حذف المورد</h3>
+                <p className="text-sm text-muted-foreground">
+                  هل أنت متأكد من حذف المورد{target ? ` "${target.name}"` : ""}؟{" "}
+                  سيتم حذف جميع منتجاته ({target?.productCount ?? 0} منتج) ولا يمكن التراجع.
+                </p>
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={deleting}
+                    onClick={() => handleDelete(deleteConfirm)}
+                  >
+                    {deleting ? "جاري الحذف..." : "نعم، احذف"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="flex-1"
+                    disabled={deleting}
+                    onClick={() => setDeleteConfirm(null)}
+                  >
+                    إلغاء
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </AdminPasswordGate>
   );
 }
 
 function FormField({
-  label,
-  required,
-  children,
+  label, required, children,
 }: {
   label: string;
   required?: boolean;
