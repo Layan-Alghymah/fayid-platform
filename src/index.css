@@ -113,25 +113,10 @@
   display: block;
 }
 
-/* Cinematic dark-teal overlay for light mode hero — removes foggy look */
-.light .hero-bg-light::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  /* Vertical: slightly darker at top & bottom, lighter in midfield */
-  background:
-    linear-gradient(
-      to bottom,
-      rgba(0, 20, 30, 0.38) 0%,
-      rgba(0, 12, 22, 0.18) 45%,
-      rgba(0, 20, 30, 0.52) 100%
-    ),
-    /* RTL side: deepen behind the hero text block (right side) */
-    linear-gradient(
-      to left,
-      rgba(0, 15, 25, 0.42) 0%,
-      transparent 58%
-    );
+/* CTA banner ("لديك مخزون راكد؟") — dark overlay for light mode readability */
+/* In dark mode bg-secondary/80 is already deep; in light it washes out white text */
+.light .cta-section-overlay {
+  background: rgba(0, 15, 28, 0.76) !important;
 }
 
 .hero-bg-dark {

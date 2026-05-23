@@ -368,7 +368,7 @@ export default function Home() {
             alt="Gold Texture"
             className="w-full h-full object-cover opacity-30 mix-blend-overlay"
           />
-          <div className="absolute inset-0 bg-secondary/80 backdrop-blur-sm" />
+          <div className="cta-section-overlay absolute inset-0 bg-secondary/80 backdrop-blur-sm" />
         </div>
         <div className="max-w-4xl mx-auto px-4 relative z-10 text-center">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-5">لديك مخزون راكد؟</h2>
