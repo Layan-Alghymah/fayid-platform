@@ -6,6 +6,12 @@ import { Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
+/** Arabic plural for meters: 1 متر, 2 متر, 3 أمتار and above */
+function formatMeters(n: number): string {
+  if (n <= 2) return `${n} متر`;
+  return `${n} أمتار`;
+}
+
 export default function Cart() {
   const { cart, loading, updateCartItem, removeFromCart } = useCart();
   const [, setLocation] = useLocation();
@@ -46,61 +52,76 @@ export default function Cart() {
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Cart Items */}
             <div className="w-full lg:w-2/3 space-y-4">
-              {cart.items.map((item) => (
-                <div key={item.productId} className="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row gap-6 items-center relative pr-12 sm:pr-4">
-                  
-                  <button 
-                    className="absolute top-4 right-4 sm:static sm:order-last p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                    onClick={() => handleRemove(item.productId)}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+              {cart.items.map((item) => {
+                const isTextile = item.product?.category === "textiles" || item.product?.unit === "meter";
+                // For textiles cap at maxQuantityPerOrder (default 12), for others use stock
+                const maxQty = isTextile
+                  ? Math.min(item.product?.maxQuantityPerOrder ?? 12, item.product?.quantity || 12)
+                  : (item.product?.quantity ?? 999);
 
-                  <div className="w-24 h-24 rounded-xl overflow-hidden bg-background flex-shrink-0">
-                    <img
-                      src={item.product?.imageUrl || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=200&h=200&fit=crop"}
-                      alt={item.product?.name ?? "منتج"}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                return (
+                  <div key={item.productId} className="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row gap-6 items-center relative pr-12 sm:pr-4">
 
-                  <div className="flex-1 flex flex-col sm:flex-row items-center justify-between w-full">
-                    <div className="text-center sm:text-right mb-4 sm:mb-0">
-                      <Link href={`/products/${item.product?.id ?? item.productId}`}>
-                        <h3 className="font-bold text-lg hover:text-primary transition-colors">{item.product?.name ?? "منتج"}</h3>
-                      </Link>
-                      <p className="text-primary font-bold mt-1">{formatPrice(item.product?.price ?? 0)}</p>
-                      {item.selectedSize && (
-                        <p className="text-xs text-muted-foreground mt-0.5">المقاس: {item.selectedSize}</p>
-                      )}
-                      {item.snapOption && item.snapOption !== "بدون طقطاق" && (
-                        <p className="text-xs text-muted-foreground">{item.snapOption}</p>
-                      )}
+                    <button
+                      className="absolute top-4 right-4 sm:static sm:order-last p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                      onClick={() => handleRemove(item.productId)}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+
+                    <div className="w-24 h-24 rounded-xl overflow-hidden bg-background flex-shrink-0">
+                      <img
+                        src={item.product?.imageUrl || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=200&h=200&fit=crop"}
+                        alt={item.product?.name ?? "منتج"}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
 
-                    <div className="flex items-center bg-background border border-white/10 rounded-lg h-10 px-1">
-                      <button 
-                        className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                        onClick={() => updateCartItem(item.productId, Math.max(1, item.quantity - 1))}
-                        disabled={item.quantity <= 1}
-                      >-</button>
-                      <span className="w-10 text-center font-semibold">{item.quantity}</span>
-                      <button
-                        className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                        onClick={() => updateCartItem(item.productId, Math.min(item.product?.quantity ?? 999, item.quantity + 1))}
-                        disabled={item.quantity >= (item.product?.quantity ?? 999)}
-                      >+</button>
+                    <div className="flex-1 flex flex-col sm:flex-row items-center justify-between w-full">
+                      <div className="text-center sm:text-right mb-4 sm:mb-0">
+                        <Link href={`/products/${item.product?.id ?? item.productId}`}>
+                          <h3 className="font-bold text-lg hover:text-primary transition-colors">{item.product?.name ?? "منتج"}</h3>
+                        </Link>
+                        <p className="text-primary font-bold mt-1">
+                          {isTextile
+                            ? `${item.product?.price ?? 0} ر.س / متر`
+                            : formatPrice(item.product?.price ?? 0)
+                          }
+                        </p>
+                        {item.selectedSize && (
+                          <p className="text-xs text-muted-foreground mt-0.5">المقاس: {item.selectedSize}</p>
+                        )}
+                        {item.snapOption && (
+                          <p className="text-xs text-muted-foreground">طقطاق: {item.snapOption}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center bg-background border border-white/10 rounded-lg h-10 px-1">
+                        <button
+                          className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-40"
+                          onClick={() => updateCartItem(item.productId, Math.max(1, item.quantity - 1))}
+                          disabled={item.quantity <= 1}
+                        >-</button>
+                        <span className="w-16 text-center font-semibold text-sm">
+                          {isTextile ? formatMeters(item.quantity) : item.quantity}
+                        </span>
+                        <button
+                          className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-40"
+                          onClick={() => updateCartItem(item.productId, Math.min(maxQty, item.quantity + 1))}
+                          disabled={item.quantity >= maxQty}
+                        >+</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Order Summary */}
             <div className="w-full lg:w-1/3">
               <div className="glass-panel p-6 rounded-3xl sticky top-28">
                 <h3 className="text-xl font-bold mb-6">ملخص الطلب</h3>
-                
+
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between text-muted-foreground">
                     <span>المجموع الفرعي</span>

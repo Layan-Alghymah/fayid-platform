@@ -61,10 +61,13 @@ export function useProduct(id: number) {
   return useQuery({
     queryKey: ['product', id],
     queryFn: async (): Promise<Product | null> => {
+      // Also joins suppliers to hide products from inactive/deleted suppliers
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select('*, suppliers!inner(is_active)')
         .eq('id', id)
+        .eq('is_active', true)
+        .eq('suppliers.is_active', true)
         .single();
       if (error || !data) return null;
       return mapSupabaseToProduct(data);

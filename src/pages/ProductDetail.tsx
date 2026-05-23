@@ -4,7 +4,7 @@ import { useProduct } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice, calculateDiscount, translateDiscountReason } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, ShieldCheck, Tag, Box, Ruler } from "lucide-react";
+import { ShoppingCart, ShieldCheck, Tag } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { HomeBackLink } from "@/components/HomeBackLink";
@@ -17,6 +17,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   dresses: "فساتين",
   clearance: "تصفية",
 };
+
+/** Arabic plural for meters: 1 متر, 2 متر, 3 أمتار and above */
+function formatMeters(n: number): string {
+  if (n <= 2) return `${n} متر`;
+  return `${n} أمتار`;
+}
 
 export default function ProductDetail() {
   const [, params] = useRoute("/products/:id");
@@ -61,21 +67,34 @@ export default function ProductDetail() {
 
   const discount = calculateDiscount(product.price, product.originalPrice);
   const isTextile = product.category === "textiles" || product.unit === "meter";
+  const isAbaya = product.category === "abayas";
+  // For textiles: cap at maxQuantityPerOrder (default 12). For others: use stock.
   const maxQty = isTextile
-    ? (product.maxQuantityPerOrder ?? 12)
+    ? Math.min(product.maxQuantityPerOrder ?? 12, product.quantity || 12)
     : product.quantity;
-  const unitLabel = isTextile ? " متر" : "";
   const displayImages = product.images && product.images.length > 0 ? product.images : null;
   const activeImage = mainImage ?? product.imageUrl ?? null;
 
   const handleAddToCart = () => {
+    // Enforce size selection for abayas
+    if (isAbaya && !selectedSize) {
+      toast({ title: "يرجى اختيار المقاس", variant: "destructive" });
+      return;
+    }
+
     const options: { selectedSize?: string; snapOption?: string } = {};
     if (selectedSize) options.selectedSize = selectedSize;
-    if (product.hasAbayaSnapOption) options.snapOption = snapOption;
+    // Always capture snap option for abayas
+    if (isAbaya) options.snapOption = snapOption;
+
     addToCart(product.id, quantity, options);
     toast({
       title: "تم الإضافة للسلة",
-      description: "تم إضافة المنتج بنجاح.",
+      description: isAbaya
+        ? `${product.name} — مقاس ${selectedSize} · ${snapOption}`
+        : isTextile
+        ? `${product.name} — ${formatMeters(quantity)}`
+        : "تم إضافة المنتج بنجاح.",
     });
   };
 
@@ -146,16 +165,22 @@ export default function ProductDetail() {
 
             <div className="flex items-center gap-4 mb-6">
               <div className="text-3xl font-black text-foreground">
-                {formatPrice(product.price)}
-                {isTextile && <span className="text-base font-normal text-muted-foreground mr-1">/ متر</span>}
+                {isTextile
+                  ? <>{product.price} <span className="text-xl font-bold">ر.س</span> <span className="text-base font-normal text-muted-foreground">/ متر</span></>
+                  : formatPrice(product.price)
+                }
               </div>
               {product.originalPrice > product.price && (
                 <div className="text-lg text-muted-foreground line-through">
-                  {formatPrice(product.originalPrice)}
+                  {isTextile
+                    ? `${product.originalPrice} ر.س / متر`
+                    : formatPrice(product.originalPrice)
+                  }
                 </div>
               )}
             </div>
 
+            {/* Info panel — supplier and discount reason ONLY (no stock shown to public) */}
             <div className="glass-panel rounded-xl p-4 mb-6 flex flex-col gap-3">
               <div className="flex items-center gap-3 text-sm text-foreground">
                 <ShieldCheck className="w-5 h-5 text-primary" />
@@ -167,26 +192,20 @@ export default function ProductDetail() {
                   <span>سبب الخصم: <strong>{translateDiscountReason(product.discountReason)}</strong></span>
                 </div>
               )}
-              <div className="flex items-center gap-3 text-sm text-foreground">
-                {isTextile ? (
-                  <>
-                    <Ruler className="w-5 h-5 text-primary" />
-                    <span>الكمية المتاحة: <strong>{product.quantity} متر</strong></span>
-                    <span className="text-muted-foreground text-xs">(الحد الأقصى للطلب: {maxQty} متر)</span>
-                  </>
-                ) : (
-                  <>
-                    <Box className="w-5 h-5 text-primary" />
-                    <span>الكمية المتاحة: <strong>{product.quantity}</strong></span>
-                  </>
-                )}
-              </div>
+              {isTextile && (
+                <div className="text-xs text-muted-foreground">
+                  الحد الأقصى للطلب: {product.maxQuantityPerOrder ?? 12} متر
+                </div>
+              )}
             </div>
 
-            {/* Size selector — abayas use fixed sizes, others use product.availableSizes */}
-            {product.category === "abayas" && (
+            {/* Size selector — abayas: fixed sizes 52-60; other categories: availableSizes from DB */}
+            {isAbaya && (
               <div className="mb-5">
-                <h3 className="text-sm font-bold mb-3">اختري المقاس <span className="text-muted-foreground font-normal">(عباية)</span></h3>
+                <h3 className="text-sm font-bold mb-3">
+                  اختري المقاس <span className="text-destructive">*</span>
+                  <span className="text-muted-foreground font-normal mr-1">(عباية)</span>
+                </h3>
                 <div className="flex flex-wrap gap-2">
                   {["52", "54", "56", "58", "60"].map((size) => (
                     <button
@@ -206,7 +225,7 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {product.category !== "abayas" && product.availableSizes && product.availableSizes.length > 0 && (
+            {!isAbaya && product.availableSizes && product.availableSizes.length > 0 && (
               <div className="mb-5">
                 <h3 className="text-sm font-bold mb-3">اختر المقاس</h3>
                 <div className="flex flex-wrap gap-2">
@@ -228,8 +247,8 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Abaya snap option */}
-            {product.hasAbayaSnapOption && (
+            {/* Snap option — always shown for ALL abayas */}
+            {isAbaya && (
               <div className="mb-5">
                 <h3 className="text-sm font-bold mb-3">طقطاق العباية</h3>
                 <div className="flex gap-2">
@@ -268,8 +287,8 @@ export default function ProductDetail() {
                     className="w-10 h-10 flex items-center justify-center text-xl text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-colors"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   >-</button>
-                  <span className="w-14 text-center font-bold text-lg">
-                    {quantity}{unitLabel}
+                  <span className="w-20 text-center font-bold text-lg">
+                    {isTextile ? formatMeters(quantity) : quantity}
                   </span>
                   <button
                     className="w-10 h-10 flex items-center justify-center text-xl text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-colors"

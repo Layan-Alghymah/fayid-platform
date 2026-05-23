@@ -80,15 +80,24 @@ export function buildWhatsAppOrderMessage(
       const lineTotal = unitPrice * item.quantity;
       grandTotal += lineTotal;
 
+      const isTextile = item.product.category === "textiles" || item.product.unit === "meter";
+      const isAbaya = item.product.category === "abayas";
+
+      // Arabic quantity wording: 1 متر, 2 متر, 3 أمتار and above
+      const qtyDisplay = isTextile
+        ? (item.quantity <= 2 ? `${item.quantity} متر` : `${item.quantity} أمتار`)
+        : String(item.quantity);
+
       lines.push(`${index + 1}. المنتج: ${item.product.name}`);
-      lines.push(`   الكمية: ${item.quantity}`);
+      lines.push(`   الكمية: ${qtyDisplay}`);
       if (item.selectedSize) {
         lines.push(`   المقاس: ${item.selectedSize}`);
       }
-      if (item.snapOption && item.snapOption !== "بدون طقطاق") {
-        lines.push(`   طقطاق العباية: ${item.snapOption}`);
+      // Always show snap option for abayas (even "بدون طقطاق")
+      if (isAbaya) {
+        lines.push(`   طقطاق العباية: ${item.snapOption ?? "بدون طقطاق"}`);
       }
-      lines.push(`   سعر القطعة: ${formatSar(unitPrice)}`);
+      lines.push(`   سعر القطعة: ${formatSar(unitPrice)}${isTextile ? " / متر" : ""}`);
       lines.push(`   الإجمالي: ${formatSar(lineTotal)}`);
       lines.push("");
     });
