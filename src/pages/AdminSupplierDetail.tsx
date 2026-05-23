@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Pencil,
   Store,
+  Trash2,
 } from "lucide-react";
 
 const SUPPLIER_TYPES = [
@@ -98,6 +99,10 @@ export default function AdminSupplierDetail() {
   const [editPrice, setEditPrice] = useState("");
   const [editQty, setEditQty] = useState("");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  // Delete product state
+  const [deleteProductConfirm, setDeleteProductConfirm] = useState<number | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState(false);
 
   // ─── Load data ─────────────────────────────────────────────────────────────
 
@@ -318,6 +323,45 @@ export default function AdminSupplierDetail() {
     setUpdatingId(productId);
     await adminSupabase.from("products").update({ is_active: !currentActive }).eq("id", productId);
     setUpdatingId(null);
+    await loadProducts();
+  };
+
+  // ─── Delete product ────────────────────────────────────────────────────────
+
+  const handleDeleteProduct = async (productId: number) => {
+    setDeletingProduct(true);
+    const { error, count } = await adminSupabase
+      .from("products")
+      .delete({ count: "exact" })
+      .eq("id", productId);
+
+    if (error) {
+      const isRls = error.code === "42501" || error.message?.includes("row-level security");
+      toast({
+        title: "خطأ في الحذف",
+        description: isRls
+          ? "مرفوض: RLS يمنع الحذف. تأكد من ضبط VITE_SUPABASE_SERVICE_KEY."
+          : `فشل حذف المنتج: ${error.message}`,
+        variant: "destructive",
+      });
+      setDeletingProduct(false);
+      return;
+    }
+
+    if (count === 0) {
+      toast({
+        title: "تحذير",
+        description: "لم يُحذف المنتج — قد يكون VITE_SUPABASE_SERVICE_KEY غير مضبوط.",
+        variant: "destructive",
+      });
+      setDeletingProduct(false);
+      setDeleteProductConfirm(null);
+      return;
+    }
+
+    toast({ title: "تم الحذف", description: "تم حذف المنتج بنجاح" });
+    setDeleteProductConfirm(null);
+    setDeletingProduct(false);
     await loadProducts();
   };
 
@@ -750,6 +794,18 @@ export default function AdminSupplierDetail() {
                           </>
                         )}
                       </Button>
+
+                      {/* Delete product */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        disabled={updatingId === p.id || deletingProduct}
+                        onClick={() => setDeleteProductConfirm(p.id)}
+                        title="حذف المنتج"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -763,6 +819,36 @@ export default function AdminSupplierDetail() {
             <p className="text-muted-foreground text-sm">قريبًا</p>
           </section>
         </main>
+
+        {/* ── Delete Product Modal ── */}
+        {deleteProductConfirm !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <div className="glass-panel rounded-2xl p-6 max-w-sm w-full space-y-4">
+              <h3 className="text-lg font-bold text-destructive">حذف المنتج</h3>
+              <p className="text-sm text-muted-foreground">
+                هل أنت متأكد من حذف المنتج؟ لا يمكن التراجع عن هذا الإجراء.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={deletingProduct}
+                  onClick={() => handleDeleteProduct(deleteProductConfirm)}
+                >
+                  {deletingProduct ? "جاري الحذف..." : "نعم، احذف"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  disabled={deletingProduct}
+                  onClick={() => setDeleteProductConfirm(null)}
+                >
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Edit Supplier Modal ── */}
         {showEditModal && (

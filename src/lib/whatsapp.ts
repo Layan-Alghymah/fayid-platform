@@ -1,7 +1,9 @@
 import type { CartItem } from "@/hooks/useCart";
 
-/** Fayid receives orders on this number (customer sends from their own WhatsApp). */
-export const WHATSAPP_NUMBER = "966559433431";
+/** Fayid receives orders on this number (customer sends from their own WhatsApp).
+ *  Reads from VITE_WHATSAPP_NUMBER env var; strips leading + and non-digit chars. */
+const _rawNumber = import.meta.env.VITE_WHATSAPP_NUMBER ?? "966555687510";
+export const WHATSAPP_NUMBER = _rawNumber.replace(/[^\d]/g, "");
 
 export type WhatsAppCheckoutCustomer = {
   name: string;

@@ -14,10 +14,13 @@ export function useProducts(filters?: Filters) {
   return useQuery({
     queryKey: ['products', filters],
     queryFn: async () => {
+      // !inner ensures products without an active supplier are excluded (INNER JOIN).
+      // anon can SELECT suppliers (RLS allows it), so the join works.
       let query = supabase
         .from('products')
-        .select('*')
+        .select('*, suppliers!inner(is_active)')
         .eq('is_active', true)
+        .eq('suppliers.is_active', true)
         .order('created_at', { ascending: false });
 
       if (filters?.category) {
