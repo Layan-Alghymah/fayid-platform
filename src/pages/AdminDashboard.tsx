@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Users, Package, CheckCircle2, AlertTriangle, ArrowLeft,
   TrendingUp, Store, ShoppingBag, BarChart2, Tag, ChevronLeft,
-  Eye, MessageSquare, Calendar,
+  Eye, MessageSquare, Activity,
 } from "lucide-react";
 
 interface Stats {
@@ -21,6 +21,8 @@ interface Stats {
 interface AnalyticsData {
   pageViewsTotal: number;
   pageViewsToday: number;
+  uniqueVisitorsToday: number;
+  sessionsToday: number;
   checkoutEventsTotal: number;
   topPages: { path: string; count: number }[];
 }
@@ -55,6 +57,8 @@ export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     pageViewsTotal: 0,
     pageViewsToday: 0,
+    uniqueVisitorsToday: 0,
+    sessionsToday: 0,
     checkoutEventsTotal: 0,
     topPages: [],
   });
@@ -85,7 +89,7 @@ export default function AdminDashboard() {
         adminSupabase.from("suppliers").select("*").order("id", { ascending: false }).limit(5),
         adminSupabase.from("products").select("*").eq("is_active", true).order("id", { ascending: false }).limit(5),
         adminSupabase.from("page_views").select("id", { count: "exact", head: true }),
-        adminSupabase.from("page_views").select("id", { count: "exact", head: true }).gte("created_at", todayStart.toISOString()),
+        adminSupabase.from("page_views").select("visitor_id, session_id").gte("created_at", todayStart.toISOString()),
         adminSupabase.from("checkout_events").select("id", { count: "exact", head: true }),
       ]);
 
@@ -105,9 +109,17 @@ export default function AdminDashboard() {
       setPageViewsAvailable(pvAvail);
       setCheckoutEventsAvailable(ceAvail);
 
+      // Count today's page views, unique visitors, and unique sessions from fetched rows
+      const todayRows = pageViewsTodayRes.data ?? [];
+      const pageViewsToday = todayRows.length;
+      const uniqueVisitorsToday = new Set(todayRows.map((r) => r.visitor_id).filter(Boolean)).size;
+      const sessionsToday = new Set(todayRows.map((r) => r.session_id).filter(Boolean)).size;
+
       setAnalytics({
         pageViewsTotal: pvAvail ? (pageViewsTotalRes.count ?? 0) : 0,
-        pageViewsToday: pvAvail ? (pageViewsTodayRes.count ?? 0) : 0,
+        pageViewsToday: pvAvail ? pageViewsToday : 0,
+        uniqueVisitorsToday: pvAvail ? uniqueVisitorsToday : 0,
+        sessionsToday: pvAvail ? sessionsToday : 0,
         checkoutEventsTotal: ceAvail ? (checkoutTotalRes.count ?? 0) : 0,
         topPages: [],
       });
@@ -195,10 +207,10 @@ export default function AdminDashboard() {
           </div>
 
           {/* ── Analytics Stats ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={<Eye className="w-5 h-5 text-sky-400" />}
-              label="إجمالي زيارات الموقع"
+              label="إجمالي مشاهدات الصفحات"
               value={loading || pageViewsAvailable === null
                 ? "..."
                 : pageViewsAvailable ? analytics.pageViewsTotal : "—"}
@@ -206,12 +218,21 @@ export default function AdminDashboard() {
               note={pageViewsAvailable === false ? "يتطلب جدول page_views" : undefined}
             />
             <StatCard
-              icon={<Calendar className="w-5 h-5 text-indigo-400" />}
-              label="زيارات اليوم"
+              icon={<Users className="w-5 h-5 text-indigo-400" />}
+              label="زوار فريدون اليوم"
               value={loading || pageViewsAvailable === null
                 ? "..."
-                : pageViewsAvailable ? analytics.pageViewsToday : "—"}
+                : pageViewsAvailable ? analytics.uniqueVisitorsToday : "—"}
               color="indigo"
+              note={pageViewsAvailable === false ? "يتطلب جدول page_views" : undefined}
+            />
+            <StatCard
+              icon={<Activity className="w-5 h-5 text-violet-400" />}
+              label="جلسات اليوم"
+              value={loading || pageViewsAvailable === null
+                ? "..."
+                : pageViewsAvailable ? analytics.sessionsToday : "—"}
+              color="violet"
               note={pageViewsAvailable === false ? "يتطلب جدول page_views" : undefined}
             />
             <StatCard
@@ -449,6 +470,7 @@ function StatCard({
     sky:     "bg-sky-500/10 border-sky-500/20",
     indigo:  "bg-indigo-500/10 border-indigo-500/20",
     green:   "bg-green-500/10 border-green-500/20",
+    violet:  "bg-violet-500/10 border-violet-500/20",
   };
   return (
     <div className={`rounded-2xl border p-5 flex flex-col gap-3 ${styles[color] ?? styles.blue}`}>
