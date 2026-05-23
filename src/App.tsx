@@ -17,6 +17,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminSuppliers from "@/pages/AdminSuppliers";
 import AdminSupplierDetail from "@/pages/AdminSupplierDetail";
+import AdminDiscountCodes from "@/pages/AdminDiscountCodes";
 import JoinSupplier from "@/pages/JoinSupplier";
 import HowItWorks from "@/pages/HowItWorks";
 import ReturnPolicy from "@/pages/ReturnPolicy";
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/suppliers" component={AdminSuppliers} />
       <Route path="/admin/suppliers/:id" component={AdminSupplierDetail} />
+      <Route path="/admin/discount-codes" component={AdminDiscountCodes} />
       <Route component={NotFound} />
     </Switch>
   );

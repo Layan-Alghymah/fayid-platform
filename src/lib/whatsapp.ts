@@ -43,12 +43,14 @@ function groupCartBySupplier(items: CartItem[]): Map<string, CartItem[]> {
  * Builds the Arabic WhatsApp order message (grouped by supplier/store).
  * @param shippingMap - per-supplier shipping cost (supplierName → SAR)
  * @param paymentMethod - "cod" | "bank_transfer"
+ * @param discount - optional applied discount { code, amount }
  */
 export function buildWhatsAppOrderMessage(
   items: CartItem[],
   customer: WhatsAppCheckoutCustomer,
   shippingMap: Record<string, number> = {},
-  paymentMethod = "bank_transfer"
+  paymentMethod = "bank_transfer",
+  discount?: { code: string; amount: number }
 ): string {
   const lines: string[] = [];
   lines.push("طلب جديد من منصة فائض");
@@ -66,7 +68,6 @@ export function buildWhatsAppOrderMessage(
 
   const supplierGroups = groupCartBySupplier(items);
   let grandTotal = 0;
-  let totalShipping = 0;
 
   for (const [supplier, supplierItems] of supplierGroups) {
     lines.push(`المتجر: ${supplier}`);
@@ -79,6 +80,12 @@ export function buildWhatsAppOrderMessage(
 
       lines.push(`${index + 1}. المنتج: ${item.product.name}`);
       lines.push(`   الكمية: ${item.quantity}`);
+      if (item.selectedSize) {
+        lines.push(`   المقاس: ${item.selectedSize}`);
+      }
+      if (item.snapOption && item.snapOption !== "بدون طقطاق") {
+        lines.push(`   طقطاق العباية: ${item.snapOption}`);
+      }
       lines.push(`   سعر القطعة: ${formatSar(unitPrice)}`);
       lines.push(`   الإجمالي: ${formatSar(lineTotal)}`);
       lines.push("");
@@ -89,11 +96,14 @@ export function buildWhatsAppOrderMessage(
   }
 
   const shippingTotal = Object.values(shippingMap).reduce((a, b) => a + b, 0);
-  totalShipping = shippingTotal || supplierGroups.size * 30;
+  const totalShipping = shippingTotal || supplierGroups.size * 30;
 
   lines.push(`إجمالي الشحن: ${totalShipping} ر.س`);
+  if (discount && discount.amount > 0) {
+    lines.push(`الخصم (${discount.code}): -${discount.amount} ر.س`);
+  }
   lines.push(`رسوم المنصة: مجاناً`);
-  lines.push(`الإجمالي الكلي: ${grandTotal + totalShipping} ر.س`);
+  lines.push(`الإجمالي الكلي: ${Math.max(0, grandTotal + totalShipping - (discount?.amount ?? 0))} ر.س`);
   lines.push("");
   lines.push("طريقة الدفع:");
   lines.push(PAYMENT_LABELS[paymentMethod] ?? paymentMethod);

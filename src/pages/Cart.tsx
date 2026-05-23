@@ -70,6 +70,12 @@ export default function Cart() {
                         <h3 className="font-bold text-lg hover:text-primary transition-colors">{item.product?.name ?? "منتج"}</h3>
                       </Link>
                       <p className="text-primary font-bold mt-1">{formatPrice(item.product?.price ?? 0)}</p>
+                      {item.selectedSize && (
+                        <p className="text-xs text-muted-foreground mt-0.5">المقاس: {item.selectedSize}</p>
+                      )}
+                      {item.snapOption && item.snapOption !== "بدون طقطاق" && (
+                        <p className="text-xs text-muted-foreground">{item.snapOption}</p>
+                      )}
                     </div>
 
                     <div className="flex items-center bg-background border border-white/10 rounded-lg h-10 px-1">

@@ -27,11 +27,18 @@ export type SupabaseProduct = {
   original_price: number;
   quantity: number;
   image_url: string | null;
+  images?: string[] | null;
   discount_reason: string | null;
   sizes: string[] | null;
   brand: string | null;
   is_active: boolean;
   created_at: string;
+  // Extended product type fields (require ALTER TABLE — see SQL in docs)
+  unit?: string | null;
+  product_type?: string | null;
+  available_sizes?: string[] | null;
+  has_abaya_snap_option?: boolean | null;
+  max_quantity_per_order?: number | null;
 };
 
 export type Supplier = {
@@ -42,6 +49,7 @@ export type Supplier = {
   city: string | null;
   type: string | null;
   is_active: boolean;
+  logo_url?: string | null;
   created_at?: string;
 };
 
@@ -57,11 +65,18 @@ export type Product = {
   originalPrice: number;
   quantity: number;
   imageUrl: string | null;
+  images?: string[];
   discountReason: string | null;
   sizes?: string[];
   brand?: string | null;
   isActive?: boolean;
   createdAt?: string;
+  // Extended fields
+  unit?: string;
+  productType?: string;
+  availableSizes?: string[];
+  hasAbayaSnapOption?: boolean;
+  maxQuantityPerOrder?: number;
 };
 
 // Map Supabase snake_case to the camelCase Product format expected by UI
@@ -77,10 +92,16 @@ export function mapSupabaseToProduct(p: SupabaseProduct): Product {
     originalPrice: p.original_price,
     quantity: p.quantity,
     imageUrl: p.image_url ?? null,
+    images: p.images ?? undefined,
     discountReason: p.discount_reason ?? null,
     sizes: p.sizes ?? undefined,
     brand: p.brand ?? null,
     isActive: p.is_active,
     createdAt: p.created_at,
+    unit: p.unit ?? undefined,
+    productType: p.product_type ?? undefined,
+    availableSizes: p.available_sizes ?? undefined,
+    hasAbayaSnapOption: p.has_abaya_snap_option ?? undefined,
+    maxQuantityPerOrder: p.max_quantity_per_order ?? undefined,
   };
 }

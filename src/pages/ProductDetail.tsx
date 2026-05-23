@@ -4,18 +4,29 @@ import { useProduct } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice, calculateDiscount, translateDiscountReason } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, ShieldCheck, Tag, Box } from "lucide-react";
+import { ShoppingCart, ShieldCheck, Tag, Box, Ruler } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { HomeBackLink } from "@/components/HomeBackLink";
 import { useToast } from "@/hooks/use-toast";
 
+const CATEGORY_LABELS: Record<string, string> = {
+  textiles: "أقمشة",
+  clothing: "ملابس",
+  abayas: "عبايات",
+  dresses: "فساتين",
+  clearance: "تصفية",
+};
+
 export default function ProductDetail() {
   const [, params] = useRoute("/products/:id");
   const id = parseInt(params?.id || "0");
-  
+
   const { data: product, isLoading } = useProduct(id);
   const [quantity, setQuantity] = useState(1);
+  const [selectedSize, setSelectedSize] = useState<string | undefined>(undefined);
+  const [snapOption, setSnapOption] = useState<string>("بدون طقطاق");
+  const [mainImage, setMainImage] = useState<string | null>(null);
   const { addToCart } = useCart();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -49,9 +60,19 @@ export default function ProductDetail() {
   }
 
   const discount = calculateDiscount(product.price, product.originalPrice);
+  const isTextile = product.category === "textiles" || product.unit === "meter";
+  const maxQty = isTextile
+    ? (product.maxQuantityPerOrder ?? 12)
+    : product.quantity;
+  const unitLabel = isTextile ? " متر" : "";
+  const displayImages = product.images && product.images.length > 0 ? product.images : null;
+  const activeImage = mainImage ?? product.imageUrl ?? null;
 
   const handleAddToCart = () => {
-    addToCart(product.id, quantity);
+    const options: { selectedSize?: string; snapOption?: string } = {};
+    if (selectedSize) options.selectedSize = selectedSize;
+    if (product.hasAbayaSnapOption) options.snapOption = snapOption;
+    addToCart(product.id, quantity, options);
     toast({
       title: "تم الإضافة للسلة",
       description: "تم إضافة المنتج بنجاح.",
@@ -61,7 +82,7 @@ export default function ProductDetail() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        
+
         <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-8" aria-label="مسار التنقل">
           <Link href="/" className="hover:text-primary transition-colors font-medium">
             الرئيسية
@@ -86,29 +107,47 @@ export default function ProductDetail() {
                   خصم {discount}%
                 </div>
               )}
-              <img 
-                src={product.imageUrl || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1000&h=1000&fit=crop"} 
+              <img
+                src={activeImage || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1000&h=1000&fit=crop"}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
             </div>
+
+            {/* Thumbnails — shown only if multiple images */}
+            {displayImages && displayImages.length > 1 && (
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {displayImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setMainImage(img)}
+                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+                      activeImage === img ? "border-primary" : "border-white/10 hover:border-white/30"
+                    }`}
+                  >
+                    <img src={img} alt={`صورة ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
           <div className="w-full md:w-1/2 flex flex-col">
             <div className="mb-2">
               <span className="text-primary font-semibold text-sm bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                {product.category === 'textiles' ? 'أقمشة' : product.category === 'clothing' ? 'ملابس' : product.category}
+                {CATEGORY_LABELS[product.category] ?? product.category}
               </span>
             </div>
-            
+
             <h1 className="text-3xl md:text-4xl font-extrabold text-foreground mt-4 mb-4 leading-tight">
               {product.name}
             </h1>
-            
+
             <div className="flex items-center gap-4 mb-6">
               <div className="text-3xl font-black text-foreground">
                 {formatPrice(product.price)}
+                {isTextile && <span className="text-base font-normal text-muted-foreground mr-1">/ متر</span>}
               </div>
               {product.originalPrice > product.price && (
                 <div className="text-lg text-muted-foreground line-through">
@@ -117,7 +156,7 @@ export default function ProductDetail() {
               )}
             </div>
 
-            <div className="glass-panel rounded-xl p-4 mb-8 flex flex-col gap-3">
+            <div className="glass-panel rounded-xl p-4 mb-6 flex flex-col gap-3">
               <div className="flex items-center gap-3 text-sm text-foreground">
                 <ShieldCheck className="w-5 h-5 text-primary" />
                 <span>المورد: <strong className="text-primary">{product.supplierName || 'معتمد'}</strong></span>
@@ -129,13 +168,91 @@ export default function ProductDetail() {
                 </div>
               )}
               <div className="flex items-center gap-3 text-sm text-foreground">
-                <Box className="w-5 h-5 text-primary" />
-                <span>الكمية المتاحة: <strong>{product.quantity}</strong></span>
+                {isTextile ? (
+                  <>
+                    <Ruler className="w-5 h-5 text-primary" />
+                    <span>الكمية المتاحة: <strong>{product.quantity} متر</strong></span>
+                    <span className="text-muted-foreground text-xs">(الحد الأقصى للطلب: {maxQty} متر)</span>
+                  </>
+                ) : (
+                  <>
+                    <Box className="w-5 h-5 text-primary" />
+                    <span>الكمية المتاحة: <strong>{product.quantity}</strong></span>
+                  </>
+                )}
               </div>
             </div>
 
+            {/* Size selector — abayas use fixed sizes, others use product.availableSizes */}
+            {product.category === "abayas" && (
+              <div className="mb-5">
+                <h3 className="text-sm font-bold mb-3">اختري المقاس <span className="text-muted-foreground font-normal">(عباية)</span></h3>
+                <div className="flex flex-wrap gap-2">
+                  {["52", "54", "56", "58", "60"].map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSelectedSize(selectedSize === size ? undefined : size)}
+                      className={`w-12 h-12 rounded-xl border-2 text-sm font-bold transition-all ${
+                        selectedSize === size
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-white/15 hover:border-white/30"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {product.category !== "abayas" && product.availableSizes && product.availableSizes.length > 0 && (
+              <div className="mb-5">
+                <h3 className="text-sm font-bold mb-3">اختر المقاس</h3>
+                <div className="flex flex-wrap gap-2">
+                  {product.availableSizes.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSelectedSize(selectedSize === size ? undefined : size)}
+                      className={`px-4 py-2 rounded-xl border-2 text-sm font-bold transition-all ${
+                        selectedSize === size
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-white/15 hover:border-white/30"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Abaya snap option */}
+            {product.hasAbayaSnapOption && (
+              <div className="mb-5">
+                <h3 className="text-sm font-bold mb-3">طقطاق العباية</h3>
+                <div className="flex gap-2">
+                  {["بدون طقطاق", "إضافة طقطاق"].map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setSnapOption(opt)}
+                      className={`px-4 py-2 rounded-xl border-2 text-sm font-bold transition-all ${
+                        snapOption === opt
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-white/15 hover:border-white/30"
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {product.description && (
-              <div className="mb-8">
+              <div className="mb-6">
                 <h3 className="text-lg font-bold mb-2">الوصف</h3>
                 <p className="text-muted-foreground leading-relaxed">
                   {product.description}
@@ -144,17 +261,20 @@ export default function ProductDetail() {
             )}
 
             {/* Actions */}
-            <div className="mt-auto pt-8 border-t border-white/10">
+            <div className="mt-auto pt-6 border-t border-white/10">
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center bg-background border border-border rounded-xl h-14 px-2">
                   <button
                     className="w-10 h-10 flex items-center justify-center text-xl text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-colors"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   >-</button>
-                  <span className="w-12 text-center font-bold text-lg">{quantity}</span>
+                  <span className="w-14 text-center font-bold text-lg">
+                    {quantity}{unitLabel}
+                  </span>
                   <button
                     className="w-10 h-10 flex items-center justify-center text-xl text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-colors"
-                    onClick={() => setQuantity(Math.min(product.quantity, quantity + 1))}
+                    onClick={() => setQuantity(Math.min(maxQty, quantity + 1))}
+                    disabled={quantity >= maxQty}
                   >+</button>
                 </div>
 

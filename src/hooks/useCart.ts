@@ -6,6 +6,8 @@ import { supabase, mapSupabaseToProduct, type Product as MappedProduct } from '@
 export interface CartItem {
   productId: number;
   quantity: number;
+  selectedSize?: string;
+  snapOption?: string;
   product: MappedProduct;
 }
 
@@ -14,8 +16,15 @@ export interface Cart {
   total: number;
 }
 
+interface CartStateItem {
+  productId: number;
+  quantity: number;
+  selectedSize?: string;
+  snapOption?: string;
+}
+
 interface CartState {
-  items: { productId: number; quantity: number }[];
+  items: CartStateItem[];
 }
 
 const STORAGE_KEY = 'fayid_cart';
@@ -76,7 +85,13 @@ export function useCart() {
     for (const entry of cartState.items) {
       const product = await fetchProduct(entry.productId);
       if (product) {
-        items.push({ productId: entry.productId, quantity: entry.quantity, product });
+        items.push({
+          productId: entry.productId,
+          quantity: entry.quantity,
+          selectedSize: entry.selectedSize,
+          snapOption: entry.snapOption,
+          product,
+        });
         total += product.price * entry.quantity;
       }
     }
@@ -89,18 +104,22 @@ export function useCart() {
     refreshCart();
   }, [refreshCart]);
 
-  const addToCart = useCallback((productId: number, quantity: number = 1) => {
+  const addToCart = useCallback((
+    productId: number,
+    quantity: number = 1,
+    options?: { selectedSize?: string; snapOption?: string }
+  ) => {
     setCartState(prev => {
       const existing = prev.items.find(i => i.productId === productId);
-      let newItems: typeof prev.items;
+      let newItems: CartStateItem[];
       if (existing) {
         newItems = prev.items.map(i =>
           i.productId === productId
-            ? { ...i, quantity: i.quantity + quantity }
+            ? { ...i, quantity: i.quantity + quantity, ...(options ?? {}) }
             : i
         );
       } else {
-        newItems = [...prev.items, { productId, quantity }];
+        newItems = [...prev.items, { productId, quantity, ...(options ?? {}) }];
       }
       const next = { items: newItems };
       saveCartState(next);

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { buildWhatsAppOrderMessage, openWhatsAppOrder } from "@/lib/whatsapp";
+import { validateDiscountCode } from "@/lib/discountCodes";
 import type { CartItem } from "@/hooks/useCart";
 
 // ─── Zod schemas per step ────────────────────────────────────────────────────
@@ -121,6 +122,7 @@ export default function Checkout() {
   const { cart, loading: cartLoading } = useCart();
   const [step, setStep] = useState(1);
   const [supplierCities, setSupplierCities] = useState<Record<string, string>>({});
+  const [appliedDiscount, setAppliedDiscount] = useState<{ code: string; amount: number } | null>(null);
 
   const {
     register,
@@ -180,7 +182,8 @@ export default function Checkout() {
 
   const subtotal = cart?.total ?? 0;
   const shippingPrice = Object.values(shippingMap).reduce((a, b) => a + b, 0);
-  const total = subtotal + shippingPrice;
+  const discountAmount = appliedDiscount?.amount ?? 0;
+  const total = Math.max(0, subtotal + shippingPrice - discountAmount);
 
   const selectedPaymentLabel =
     PAYMENT_OPTIONS.find((p) => p.id === paymentMethod)?.name ?? "—";
@@ -215,7 +218,8 @@ export default function Checkout() {
         notes: values.notes?.trim(),
       },
       shippingMap,
-      values.paymentMethod
+      values.paymentMethod,
+      appliedDiscount ?? undefined
     );
 
     openWhatsAppOrder(message);
@@ -534,7 +538,11 @@ export default function Checkout() {
                             />
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-sm truncate">{item.product.name}</p>
-                              <p className="text-xs text-muted-foreground">الكمية: {item.quantity}</p>
+                              <p className="text-xs text-muted-foreground">
+                                الكمية: {item.quantity}
+                                {item.selectedSize && ` · المقاس: ${item.selectedSize}`}
+                                {item.snapOption && item.snapOption !== "بدون طقطاق" && ` · ${item.snapOption}`}
+                              </p>
                             </div>
                             <p className="font-bold text-primary text-sm whitespace-nowrap">
                               {formatPrice(item.product.price * item.quantity)}
@@ -550,6 +558,12 @@ export default function Checkout() {
                 <div className="border-t border-white/10 pt-4 space-y-3 text-sm">
                   <SummaryRow label="المجموع الفرعي" value={formatPrice(subtotal)} />
                   <SummaryRow label="إجمالي الشحن" value={formatPrice(shippingPrice)} />
+                  {appliedDiscount && appliedDiscount.amount > 0 && (
+                    <div className="flex justify-between text-green-500">
+                      <span>الخصم ({appliedDiscount.code})</span>
+                      <span className="font-medium">- {formatPrice(appliedDiscount.amount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-muted-foreground">
                     <span>رسوم المنصة</span>
                     <span className="text-green-500 font-bold">مجاناً</span>
@@ -562,8 +576,12 @@ export default function Checkout() {
                 </div>
               </div>
 
-              {/* Discount code — placeholder, no backend */}
-              <DiscountCodeBox />
+              {/* Discount code */}
+              <DiscountCodeBox
+                subtotal={subtotal}
+                applied={appliedDiscount}
+                onApply={setAppliedDiscount}
+              />
 
               <Button
                 type="button"
@@ -666,28 +684,90 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DiscountCodeBox() {
-  const [code, setCode] = useState("");
+function DiscountCodeBox({
+  subtotal,
+  applied,
+  onApply,
+}: {
+  subtotal: number;
+  applied: { code: string; amount: number } | null;
+  onApply: (discount: { code: string; amount: number } | null) => void;
+}) {
+  const [code, setCode] = useState(applied?.code ?? "");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleApply = async () => {
+    if (!code.trim()) return;
+    setStatus("loading");
+    setErrorMsg("");
+    const result = await validateDiscountCode(code, subtotal);
+    if (result.valid) {
+      onApply({ code: result.code.code, amount: result.amount });
+      setStatus("success");
+    } else {
+      onApply(null);
+      setStatus("error");
+      setErrorMsg(result.error);
+    }
+  };
+
+  const handleRemove = () => {
+    setCode("");
+    setStatus("idle");
+    setErrorMsg("");
+    onApply(null);
+  };
+
+  if (applied) {
+    return (
+      <div className="glass-panel rounded-2xl p-5 space-y-3">
+        <p className="text-sm font-bold">كود الخصم</p>
+        <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
+          <div>
+            <p className="text-green-500 font-bold text-sm">تم تطبيق الخصم!</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {applied.code} — خصم {formatPrice(applied.amount)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            إزالة
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="glass-panel rounded-2xl p-5 space-y-3">
       <p className="text-sm font-bold">هل لديك كود خصم؟</p>
       <div className="flex gap-2">
         <Input
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={(e) => { setCode(e.target.value); setStatus("idle"); setErrorMsg(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleApply(); } }}
           placeholder="أدخل الكود هنا"
           dir="ltr"
           className="flex-1 text-right tracking-widest"
+          disabled={status === "loading"}
         />
         <Button
           type="button"
           variant="outline"
           className="shrink-0 px-5 font-bold"
-          onClick={() => {/* placeholder */}}
+          onClick={handleApply}
+          disabled={status === "loading" || !code.trim()}
         >
-          تطبيق
+          {status === "loading" ? "..." : "تطبيق"}
         </Button>
       </div>
+      {status === "error" && errorMsg && (
+        <p className="text-destructive text-xs">{errorMsg}</p>
+      )}
     </div>
   );
 }

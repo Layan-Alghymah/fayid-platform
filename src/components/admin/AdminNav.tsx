@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, Users } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Tag } from "lucide-react";
 
 export function AdminNav() {
   const { logout } = useAdminAuth();
@@ -17,17 +17,23 @@ export function AdminNav() {
           <span className="text-muted-foreground text-xs">Admin</span>
         </div>
 
-        <nav className="flex items-center gap-2">
+        <nav className="flex items-center gap-1">
           <Link href="/admin">
             <Button variant="ghost" size="sm" className="gap-2 text-sm">
               <LayoutDashboard className="w-4 h-4" />
-              الرئيسية
+              <span className="hidden sm:inline">الرئيسية</span>
             </Button>
           </Link>
           <Link href="/admin/suppliers">
             <Button variant="ghost" size="sm" className="gap-2 text-sm">
               <Users className="w-4 h-4" />
-              الموردون
+              <span className="hidden sm:inline">الموردون</span>
+            </Button>
+          </Link>
+          <Link href="/admin/discount-codes">
+            <Button variant="ghost" size="sm" className="gap-2 text-sm">
+              <Tag className="w-4 h-4" />
+              <span className="hidden sm:inline">الخصومات</span>
             </Button>
           </Link>
           <Button
@@ -37,7 +43,7 @@ export function AdminNav() {
             onClick={logout}
           >
             <LogOut className="w-4 h-4" />
-            خروج
+            <span className="hidden sm:inline">خروج</span>
           </Button>
         </nav>
       </div>

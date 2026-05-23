@@ -6,7 +6,7 @@ import { AdminNav } from "@/components/admin/AdminNav";
 import { Button } from "@/components/ui/button";
 import {
   Users, Package, CheckCircle2, AlertTriangle, ArrowLeft,
-  TrendingUp, Store, ShoppingBag, BarChart2,
+  TrendingUp, Store, ShoppingBag, BarChart2, Tag, ChevronLeft,
 } from "lucide-react";
 
 interface Stats {
@@ -137,6 +137,47 @@ export default function AdminDashboard() {
               value={loading ? "..." : stats.lowStock}
               color="amber"
             />
+          </div>
+
+          {/* ── Quick Links ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Link href="/admin/suppliers">
+              <div className="glass-panel rounded-2xl p-4 flex items-center gap-3 hover:bg-white/5 transition-colors cursor-pointer group">
+                <Store className="w-6 h-6 text-primary flex-shrink-0" />
+                <div>
+                  <p className="font-bold text-sm">الموردون</p>
+                  <p className="text-xs text-muted-foreground">إدارة الموردين</p>
+                </div>
+                <ChevronLeft className="w-4 h-4 text-muted-foreground mr-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </Link>
+            <Link href="/admin/suppliers">
+              <div className="glass-panel rounded-2xl p-4 flex items-center gap-3 hover:bg-white/5 transition-colors cursor-pointer group">
+                <ShoppingBag className="w-6 h-6 text-purple-400 flex-shrink-0" />
+                <div>
+                  <p className="font-bold text-sm">المنتجات</p>
+                  <p className="text-xs text-muted-foreground">إدارة عبر الموردين</p>
+                </div>
+                <ChevronLeft className="w-4 h-4 text-muted-foreground mr-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </Link>
+            <Link href="/admin/discount-codes">
+              <div className="glass-panel rounded-2xl p-4 flex items-center gap-3 hover:bg-white/5 transition-colors cursor-pointer group">
+                <Tag className="w-6 h-6 text-amber-400 flex-shrink-0" />
+                <div>
+                  <p className="font-bold text-sm">أكواد الخصم</p>
+                  <p className="text-xs text-muted-foreground">إدارة الأكواد</p>
+                </div>
+                <ChevronLeft className="w-4 h-4 text-muted-foreground mr-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </Link>
+            <div className="glass-panel rounded-2xl p-4 flex items-center gap-3 opacity-50 cursor-not-allowed">
+              <Package className="w-6 h-6 text-muted-foreground flex-shrink-0" />
+              <div>
+                <p className="font-bold text-sm">الطلبات</p>
+                <p className="text-xs text-muted-foreground">قريباً</p>
+              </div>
+            </div>
           </div>
 
           {/* ── Recent Suppliers + Recent Products ── */}
