@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { supabase, adminSupabase, type Supplier } from "@/lib/supabase";
+import { adminSupabase, type Supplier } from "@/lib/supabase";
 import { AdminPasswordGate } from "@/components/admin/AdminPasswordGate";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { Button } from "@/components/ui/button";
@@ -54,12 +54,18 @@ export default function AdminSuppliers() {
 
   async function loadSuppliers() {
     setLoading(true);
-    const { data: suppData } = await supabase
+    // Use adminSupabase to bypass RLS and avoid filtering by is_active.
+    // Order by id (always exists) instead of created_at which may be missing.
+    const { data: suppData, error: suppError } = await adminSupabase
       .from("suppliers")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("id", { ascending: false });
 
-    const { data: prodData } = await supabase
+    if (suppError) {
+      console.error("[admin] loadSuppliers error:", suppError.message);
+    }
+
+    const { data: prodData } = await adminSupabase
       .from("products")
       .select("supplier_id");
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useRoute, Link } from "wouter";
-import { supabase, adminSupabase, type Supplier, type SupabaseProduct } from "@/lib/supabase";
+import { adminSupabase, type Supplier, type SupabaseProduct } from "@/lib/supabase";
 import { AdminPasswordGate } from "@/components/admin/AdminPasswordGate";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { Button } from "@/components/ui/button";
@@ -77,22 +77,28 @@ export default function AdminSupplierDetail() {
 
   async function loadSupplier() {
     setLoadingSupplier(true);
-    const { data } = await supabase
+    // Use adminSupabase to bypass RLS — anon client filters by is_active.
+    const { data, error } = await adminSupabase
       .from("suppliers")
       .select("*")
       .eq("id", supplierId)
       .single();
+    if (error && error.code !== "PGRST116") {
+      console.error("[admin] loadSupplier error:", error.message);
+    }
     setSupplier(data ?? null);
     setLoadingSupplier(false);
   }
 
   async function loadProducts() {
     setLoadingProducts(true);
-    const { data } = await adminSupabase
+    // Order by id as safe fallback (created_at may not exist on all tables).
+    const { data, error } = await adminSupabase
       .from("products")
       .select("*")
       .eq("supplier_id", supplierId)
-      .order("created_at", { ascending: false });
+      .order("id", { ascending: false });
+    if (error) console.error("[admin] loadProducts error:", error.message);
     setProducts(data ?? []);
     setLoadingProducts(false);
   }
