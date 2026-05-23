@@ -48,7 +48,7 @@ export function buildWhatsAppOrderMessage(
   items: CartItem[],
   customer: WhatsAppCheckoutCustomer,
   shippingMap: Record<string, number> = {},
-  paymentMethod = "cod"
+  paymentMethod = "bank_transfer"
 ): string {
   const lines: string[] = [];
   lines.push("طلب جديد من منصة فائض");
@@ -83,15 +83,16 @@ export function buildWhatsAppOrderMessage(
       lines.push(`   الإجمالي: ${formatSar(lineTotal)}`);
       lines.push("");
     });
+
+    lines.push("─────────────────────");
+    lines.push("");
   }
 
   const shippingTotal = Object.values(shippingMap).reduce((a, b) => a + b, 0);
   totalShipping = shippingTotal || supplierGroups.size * 30;
 
-  lines.push("─────────────────────");
-  lines.push("");
   lines.push(`إجمالي الشحن: ${totalShipping} ر.س`);
-  lines.push(`رسوم المنصة: مجاناً`);
+  lines.push(`رسوم المنصة: مجاناً حالياً`);
   lines.push(`الإجمالي الكلي: ${grandTotal + totalShipping} ر.س`);
   lines.push("");
   lines.push("طريقة الدفع:");

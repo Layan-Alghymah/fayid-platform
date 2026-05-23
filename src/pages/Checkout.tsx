@@ -38,7 +38,7 @@ const addressSchema = z.object({
 });
 
 const paymentSchema = z.object({
-  paymentMethod: z.enum(["cod", "bank_transfer"] as const, {
+  paymentMethod: z.enum(["bank_transfer"] as const, {
     errorMap: () => ({ message: "يرجى اختيار طريقة الدفع" }),
   }),
 });
@@ -75,15 +75,9 @@ const SAUDI_REGIONS = [
 
 const PAYMENT_OPTIONS = [
   {
-    id: "cod" as const,
-    name: "الدفع عند الاستلام",
-    subtitle: "ادفع نقداً عند استلام الطلب",
-    disabled: false,
-  },
-  {
     id: "bank_transfer" as const,
     name: "تحويل بنكي",
-    subtitle: "تحويل مباشر لحساب المورد",
+    subtitle: "سيتم إرسال تفاصيل التحويل بعد تأكيد الطلب",
     disabled: false,
   },
   {
@@ -137,7 +131,7 @@ export default function Checkout() {
   } = useForm<CheckoutForm>({
     resolver: zodResolver(fullSchema),
     defaultValues: {
-      paymentMethod: "cod",
+      paymentMethod: "bank_transfer",
       region: "",
       email: "",
       postalCode: "",
@@ -517,21 +511,16 @@ export default function Checkout() {
                   title="ملخص الطلب"
                 />
 
-                {/* Product list grouped by supplier */}
-                <div className="space-y-4">
+                {/* Product list grouped by supplier — products only, no per-supplier totals */}
+                <div className="space-y-5">
                   {supplierNames.map((supplierName) => {
                     const supplierItems = (cart.items ?? []).filter(
                       (item) => getSupplierNameFromItem(item) === supplierName
                     );
-                    const supplierSubtotal = supplierItems.reduce(
-                      (sum, item) => sum + item.product.price * item.quantity,
-                      0
-                    );
-                    const supplierShipping = shippingMap[supplierName] ?? 30;
                     return (
                       <div key={supplierName} className="space-y-2">
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-                          {supplierName}
+                        <p className="text-xs text-primary/80 font-bold tracking-wide border-b border-white/10 pb-1">
+                          المتجر: {supplierName}
                         </p>
                         {supplierItems.map((item) => (
                           <div key={item.productId} className="flex items-center gap-3">
@@ -552,14 +541,6 @@ export default function Checkout() {
                             </p>
                           </div>
                         ))}
-                        <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-white/5">
-                          <span>شحن هذا المورد</span>
-                          <span>{formatPrice(supplierShipping)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-bold">
-                          <span>إجمالي المورد</span>
-                          <span>{formatPrice(supplierSubtotal + supplierShipping)}</span>
-                        </div>
                       </div>
                     );
                   })}
@@ -569,6 +550,10 @@ export default function Checkout() {
                 <div className="border-t border-white/10 pt-4 space-y-3 text-sm">
                   <SummaryRow label="المجموع الفرعي" value={formatPrice(subtotal)} />
                   <SummaryRow label="إجمالي الشحن" value={formatPrice(shippingPrice)} />
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>رسوم المنصة</span>
+                    <span className="text-green-500 font-bold">مجاناً حالياً</span>
+                  </div>
                   <SummaryRow label="طريقة الدفع" value={selectedPaymentLabel} />
                   <div className="flex justify-between font-black text-lg border-t border-white/10 pt-3">
                     <span>الإجمالي</span>
@@ -576,6 +561,9 @@ export default function Checkout() {
                   </div>
                 </div>
               </div>
+
+              {/* Discount code — placeholder, no backend */}
+              <DiscountCodeBox />
 
               <Button
                 type="button"
@@ -674,6 +662,32 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between text-muted-foreground">
       <span>{label}</span>
       <span className="font-medium text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function DiscountCodeBox() {
+  const [code, setCode] = useState("");
+  return (
+    <div className="glass-panel rounded-2xl p-5 space-y-3">
+      <p className="text-sm font-bold">هل لديك كود خصم؟</p>
+      <div className="flex gap-2">
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="أدخل الكود هنا"
+          dir="ltr"
+          className="flex-1 text-right tracking-widest"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0 px-5 font-bold"
+          onClick={() => {/* placeholder */}}
+        >
+          تطبيق
+        </Button>
+      </div>
     </div>
   );
 }
