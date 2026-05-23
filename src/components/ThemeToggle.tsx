@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,14 @@ import { Button } from "@/components/ui/button";
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const isDark = theme !== "light";
+
+  // Keep browser-tab favicon in sync with the active theme
+  useEffect(() => {
+    const favicon = document.getElementById("dynamic-favicon") as HTMLLinkElement | null;
+    if (favicon) {
+      favicon.href = isDark ? "/logo-dark.png" : "/logo-light.png";
+    }
+  }, [isDark]);
 
   return (
     <Button
