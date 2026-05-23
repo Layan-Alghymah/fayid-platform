@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Users, Package, CheckCircle2, AlertTriangle, ArrowLeft,
   TrendingUp, Store, ShoppingBag, BarChart2, Tag, ChevronLeft,
+  Eye, MessageSquare, Calendar,
 } from "lucide-react";
 
 interface Stats {
@@ -15,6 +16,13 @@ interface Stats {
   totalProducts: number;
   activeProducts: number;
   lowStock: number;
+}
+
+interface AnalyticsData {
+  pageViewsTotal: number;
+  pageViewsToday: number;
+  checkoutEventsTotal: number;
+  topPages: { path: string; count: number }[];
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -42,11 +50,21 @@ export default function AdminDashboard() {
   });
   const [recentSuppliers, setRecentSuppliers] = useState<Supplier[]>([]);
   const [recentProducts, setRecentProducts] = useState<SupabaseProduct[]>([]);
-  const [analyticsAvailable, setAnalyticsAvailable] = useState<boolean | null>(null);
+  const [pageViewsAvailable, setPageViewsAvailable] = useState<boolean | null>(null);
+  const [checkoutEventsAvailable, setCheckoutEventsAvailable] = useState<boolean | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsData>({
+    pageViewsTotal: 0,
+    pageViewsToday: 0,
+    checkoutEventsTotal: 0,
+    topPages: [],
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadAll() {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
       const [
         totalSuppRes,
         activeSuppRes,
@@ -55,7 +73,9 @@ export default function AdminDashboard() {
         lowStockRes,
         recentSuppRes,
         recentProdRes,
-        analyticsRes,
+        pageViewsTotalRes,
+        pageViewsTodayRes,
+        checkoutTotalRes,
       ] = await Promise.all([
         adminSupabase.from("suppliers").select("id", { count: "exact", head: true }),
         adminSupabase.from("suppliers").select("id", { count: "exact", head: true }).eq("is_active", true),
@@ -64,7 +84,9 @@ export default function AdminDashboard() {
         adminSupabase.from("products").select("id", { count: "exact", head: true }).lt("quantity", 10).eq("is_active", true),
         adminSupabase.from("suppliers").select("*").order("id", { ascending: false }).limit(5),
         adminSupabase.from("products").select("*").eq("is_active", true).order("id", { ascending: false }).limit(5),
-        adminSupabase.from("page_views").select("id", { count: "exact", head: true }).limit(1),
+        adminSupabase.from("page_views").select("id", { count: "exact", head: true }),
+        adminSupabase.from("page_views").select("id", { count: "exact", head: true }).gte("created_at", todayStart.toISOString()),
+        adminSupabase.from("checkout_events").select("id", { count: "exact", head: true }),
       ]);
 
       setStats({
@@ -77,7 +99,40 @@ export default function AdminDashboard() {
 
       setRecentSuppliers((recentSuppRes.data ?? []) as Supplier[]);
       setRecentProducts((recentProdRes.data ?? []) as SupabaseProduct[]);
-      setAnalyticsAvailable(!analyticsRes.error);
+
+      const pvAvail = !pageViewsTotalRes.error;
+      const ceAvail = !checkoutTotalRes.error;
+      setPageViewsAvailable(pvAvail);
+      setCheckoutEventsAvailable(ceAvail);
+
+      setAnalytics({
+        pageViewsTotal: pvAvail ? (pageViewsTotalRes.count ?? 0) : 0,
+        pageViewsToday: pvAvail ? (pageViewsTodayRes.count ?? 0) : 0,
+        checkoutEventsTotal: ceAvail ? (checkoutTotalRes.count ?? 0) : 0,
+        topPages: [],
+      });
+
+      // Load top pages if page_views exists
+      if (pvAvail) {
+        const { data: topPagesData } = await adminSupabase
+          .from("page_views")
+          .select("path")
+          .order("created_at", { ascending: false })
+          .limit(500);
+
+        if (topPagesData) {
+          const pathCount: Record<string, number> = {};
+          for (const row of topPagesData) {
+            if (row.path) pathCount[row.path] = (pathCount[row.path] ?? 0) + 1;
+          }
+          const sorted = Object.entries(pathCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([path, count]) => ({ path, count }));
+          setAnalytics((prev) => ({ ...prev, topPages: sorted }));
+        }
+      }
+
       setLoading(false);
     }
 
@@ -136,6 +191,37 @@ export default function AdminDashboard() {
               label="منخفضة المخزون"
               value={loading ? "..." : stats.lowStock}
               color="amber"
+            />
+          </div>
+
+          {/* ── Analytics Stats ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StatCard
+              icon={<Eye className="w-5 h-5 text-sky-400" />}
+              label="إجمالي زيارات الموقع"
+              value={loading || pageViewsAvailable === null
+                ? "..."
+                : pageViewsAvailable ? analytics.pageViewsTotal : "—"}
+              color="sky"
+              note={pageViewsAvailable === false ? "يتطلب جدول page_views" : undefined}
+            />
+            <StatCard
+              icon={<Calendar className="w-5 h-5 text-indigo-400" />}
+              label="زيارات اليوم"
+              value={loading || pageViewsAvailable === null
+                ? "..."
+                : pageViewsAvailable ? analytics.pageViewsToday : "—"}
+              color="indigo"
+              note={pageViewsAvailable === false ? "يتطلب جدول page_views" : undefined}
+            />
+            <StatCard
+              icon={<MessageSquare className="w-5 h-5 text-green-400" />}
+              label="طلبات واتساب"
+              value={loading || checkoutEventsAvailable === null
+                ? "..."
+                : checkoutEventsAvailable ? analytics.checkoutEventsTotal : "—"}
+              color="green"
+              note={checkoutEventsAvailable === false ? "يتطلب جدول checkout_events" : undefined}
             />
           </div>
 
@@ -262,7 +348,7 @@ export default function AdminDashboard() {
                           {p.price} ر.س
                           {" · "}
                           <span className={p.quantity < 10 ? "text-amber-400" : ""}>
-                            مخزون: {p.quantity}
+                            مخزون: {p.quantity}{(p as any).unit === "meter" ? " متر" : ""}
                           </span>
                         </p>
                       </div>
@@ -273,29 +359,66 @@ export default function AdminDashboard() {
             </section>
           </div>
 
-          {/* ── Analytics ── */}
-          <section className="glass-panel rounded-2xl p-6">
-            <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+          {/* ── Analytics Detail ── */}
+          <section className="glass-panel rounded-2xl p-6 space-y-5">
+            <h2 className="text-lg font-bold flex items-center gap-2">
               <BarChart2 className="w-5 h-5 text-primary" />
               التحليلات
             </h2>
 
-            {analyticsAvailable === null || loading ? (
-              <div className="h-20 rounded-xl bg-card animate-pulse" />
-            ) : analyticsAvailable ? (
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                <span>جدول page_views موجود — يمكن عرض البيانات هنا</span>
-              </div>
+            {loading ? (
+              <div className="h-24 rounded-xl bg-card animate-pulse" />
             ) : (
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-white/5">
-                <BarChart2 className="w-8 h-8 text-muted-foreground opacity-40" />
-                <div>
-                  <p className="font-bold text-sm">التحليلات قريباً</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    سيتم عرض إحصائيات الزيارات والتفاعلات هنا بعد تفعيل جدول page_views.
-                  </p>
-                </div>
+              <div className="space-y-6">
+                {/* Page views detail */}
+                {pageViewsAvailable ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-bold text-muted-foreground">أكثر الصفحات زيارة</p>
+                    {analytics.topPages.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">لا توجد بيانات بعد</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {analytics.topPages.map(({ path, count }) => (
+                          <div key={path} className="flex items-center gap-3">
+                            <span className="text-xs text-muted-foreground font-mono flex-1 truncate" dir="ltr">
+                              {path || "/"}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="h-1.5 bg-primary/40 rounded-full"
+                                style={{ width: `${Math.max(20, Math.round((count / (analytics.topPages[0]?.count || 1)) * 120))}px` }}
+                              />
+                              <span className="text-xs font-bold text-primary w-8 text-left">{count}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-white/5">
+                    <TrendingUp className="w-8 h-8 text-muted-foreground opacity-40" />
+                    <div>
+                      <p className="font-bold text-sm">تتبع الزيارات غير مفعّل</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        أنشئ جدول <code className="bg-white/10 px-1 rounded">page_views</code> في Supabase لتفعيل تتبع الزيارات.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Checkout events */}
+                {!checkoutEventsAvailable && (
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-white/5">
+                    <MessageSquare className="w-8 h-8 text-muted-foreground opacity-40" />
+                    <div>
+                      <p className="font-bold text-sm">تتبع طلبات واتساب غير مفعّل</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        أنشئ جدول <code className="bg-white/10 px-1 rounded">checkout_events</code> في Supabase لتتبع الطلبات.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -309,12 +432,13 @@ export default function AdminDashboard() {
 // ─── StatCard ────────────────────────────────────────────────────────────────
 
 function StatCard({
-  icon, label, value, color,
+  icon, label, value, color, note,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number | string;
   color: string;
+  note?: string;
 }) {
   const styles: Record<string, string> = {
     blue:    "bg-blue-500/10 border-blue-500/20",
@@ -322,6 +446,9 @@ function StatCard({
     purple:  "bg-purple-500/10 border-purple-500/20",
     gold:    "bg-primary/10 border-primary/20",
     amber:   "bg-amber-500/10 border-amber-500/20",
+    sky:     "bg-sky-500/10 border-sky-500/20",
+    indigo:  "bg-indigo-500/10 border-indigo-500/20",
+    green:   "bg-green-500/10 border-green-500/20",
   };
   return (
     <div className={`rounded-2xl border p-5 flex flex-col gap-3 ${styles[color] ?? styles.blue}`}>
@@ -329,6 +456,7 @@ function StatCard({
       <div>
         <p className="text-2xl font-black">{value}</p>
         <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{label}</p>
+        {note && <p className="text-[10px] text-muted-foreground/60 mt-1 leading-tight">{note}</p>}
       </div>
     </div>
   );

@@ -36,7 +36,7 @@ export async function validateDiscountCode(
   }
 
   if (data.expires_at && new Date(data.expires_at) < new Date()) {
-    return { valid: false, error: "كود الخصم غير متاح" };
+    return { valid: false, error: "انتهت صلاحية كود الخصم" };
   }
 
   const amount = calculateDiscountAmount(data as DiscountCode, subtotal);

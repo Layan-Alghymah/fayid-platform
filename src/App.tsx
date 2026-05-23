@@ -1,9 +1,11 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
+import { useEffect } from "react";
+import { trackPageView } from "@/lib/analytics";
 import Home from "@/pages/Home";
 import Products from "@/pages/Products";
 import ProductDetail from "@/pages/ProductDetail";
@@ -25,6 +27,16 @@ import SupplierTerms from "@/pages/SupplierTerms";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
+
+/** Tracks page views on every route change, skipping admin pages. */
+function PageTracker() {
+  const [location] = useLocation();
+  useEffect(() => {
+    if (location.startsWith("/admin")) return;
+    trackPageView(location);
+  }, [location]);
+  return null;
+}
 
 function Router() {
   return (
@@ -61,6 +73,7 @@ function App() {
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AuthProvider>
             <AdminAuthProvider>
+              <PageTracker />
               <Router />
               <Toaster />
             </AdminAuthProvider>

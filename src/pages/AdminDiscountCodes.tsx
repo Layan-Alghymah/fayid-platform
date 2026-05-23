@@ -163,13 +163,13 @@ export default function AdminDiscountCodes() {
                   />
                 </div>
 
-                {/* Expires at */}
+                {/* Expires at — datetime-local so we capture exact time */}
                 <div>
                   <label className="block text-sm font-bold mb-1.5">
-                    تاريخ الانتهاء <span className="text-muted-foreground font-normal">(اختياري)</span>
+                    تاريخ ووقت الانتهاء <span className="text-muted-foreground font-normal">(اختياري — اتركه فارغاً لعدم الانتهاء)</span>
                   </label>
                   <Input
-                    type="date"
+                    type="datetime-local"
                     value={form.expires_at}
                     onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))}
                     dir="ltr"
@@ -257,7 +257,7 @@ export default function AdminDiscountCodes() {
                           : `${c.value} ر.س`}
                         {c.expires_at && (
                           <span className={`mr-2 ${expired ? "text-destructive" : ""}`}>
-                            · ينتهي: {new Date(c.expires_at).toLocaleDateString("ar-SA")}
+                            · ينتهي: {new Date(c.expires_at).toLocaleString("ar-SA")}
                           </span>
                         )}
                       </p>

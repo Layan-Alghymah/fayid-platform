@@ -13,8 +13,9 @@ import {
   User, MapPin, Truck, CreditCard, ClipboardList,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { buildWhatsAppOrderMessage, openWhatsAppOrder } from "@/lib/whatsapp";
+import { buildWhatsAppOrderMessage, openWhatsAppOrder, WHATSAPP_NUMBER } from "@/lib/whatsapp";
 import { validateDiscountCode } from "@/lib/discountCodes";
+import { trackCheckoutEvent } from "@/lib/analytics";
 import type { CartItem } from "@/hooks/useCart";
 
 // ─── Zod schemas per step ────────────────────────────────────────────────────
@@ -221,6 +222,17 @@ export default function Checkout() {
       values.paymentMethod,
       appliedDiscount ?? undefined
     );
+
+    // Track checkout event (fire-and-forget — WhatsApp opens regardless)
+    trackCheckoutEvent({
+      cartItems: cart?.items ?? [],
+      subtotal,
+      shippingTotal: shippingPrice,
+      discountCode: appliedDiscount?.code,
+      discountAmount: appliedDiscount?.amount,
+      grandTotal: total,
+      whatsappNumber: WHATSAPP_NUMBER,
+    }).catch(() => {});
 
     openWhatsAppOrder(message);
   };
