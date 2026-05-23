@@ -159,7 +159,6 @@ export function ProductCard({ product }: { product: Product }) {
             {isTextile && (
               <div className="space-y-3">
                 <p className="text-sm font-bold">الكمية (متر)</p>
-                <p className="text-xs text-muted-foreground">الحد الأقصى {maxMeters} متر للطلب الواحد</p>
                 <div className="flex items-center gap-4">
                   <button
                     className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-primary/10 transition-colors disabled:opacity-40"

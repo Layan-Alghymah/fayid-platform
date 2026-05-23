@@ -192,11 +192,6 @@ export default function ProductDetail() {
                   <span>سبب الخصم: <strong>{translateDiscountReason(product.discountReason)}</strong></span>
                 </div>
               )}
-              {isTextile && (
-                <div className="text-xs text-muted-foreground">
-                  الحد الأقصى للطلب: {product.maxQuantityPerOrder ?? 12} متر
-                </div>
-              )}
             </div>
 
             {/* Size selector — abayas: fixed sizes 52-60; other categories: availableSizes from DB */}
