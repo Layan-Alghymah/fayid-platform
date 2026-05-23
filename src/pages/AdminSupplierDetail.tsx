@@ -104,6 +104,19 @@ export default function AdminSupplierDetail() {
   const [deleteProductConfirm, setDeleteProductConfirm] = useState<number | null>(null);
   const [deletingProduct, setDeletingProduct] = useState(false);
 
+  // Edit product modal state
+  const [editProductId, setEditProductId] = useState<number | null>(null);
+  const [editProductForm, setEditProductForm] = useState({
+    ...defaultProductForm,
+    existingImages: [] as string[],
+    mainImageIndex: 0,
+  });
+  const [editProductSaving, setEditProductSaving] = useState(false);
+  const [editProductError, setEditProductError] = useState("");
+  const [editImageFiles, setEditImageFiles] = useState<File[]>([]);
+  const [editImagePreviews, setEditImagePreviews] = useState<string[]>([]);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
   // ─── Load data ─────────────────────────────────────────────────────────────
 
   async function loadSupplier() {
@@ -362,6 +375,128 @@ export default function AdminSupplierDetail() {
     toast({ title: "تم الحذف", description: "تم حذف المنتج بنجاح" });
     setDeleteProductConfirm(null);
     setDeletingProduct(false);
+    await loadProducts();
+  };
+
+  // ─── Open edit product modal ───────────────────────────────────────────────
+
+  const openEditProductModal = (p: SupabaseProduct) => {
+    const pa = p as any;
+    const existingImages: string[] = [];
+    if (p.image_url) existingImages.push(p.image_url);
+    if (Array.isArray(pa.images)) {
+      for (const img of pa.images) {
+        if (img && img !== p.image_url) existingImages.push(img);
+      }
+    }
+    setEditProductId(p.id);
+    setEditProductError("");
+    setEditImageFiles([]);
+    setEditImagePreviews([]);
+    setEditProductForm({
+      name: p.name ?? "",
+      description: p.description ?? "",
+      category: p.category ?? "clothing",
+      price: String(p.price ?? ""),
+      original_price: p.original_price && p.original_price !== p.price ? String(p.original_price) : "",
+      quantity: String(p.quantity ?? ""),
+      discount_reason: p.discount_reason ?? "",
+      sizes: Array.isArray(p.sizes) ? (p.sizes as string[]).join(", ") : (p.sizes ?? ""),
+      brand: p.brand ?? "",
+      is_active: p.is_active ?? true,
+      available_sizes: Array.isArray(pa.available_sizes) ? pa.available_sizes : [],
+      has_abaya_snap_option: pa.has_abaya_snap_option ?? false,
+      max_quantity_per_order: String(pa.max_quantity_per_order ?? "12"),
+      existingImages,
+      mainImageIndex: 0,
+    });
+  };
+
+  // ─── Edit image file change ────────────────────────────────────────────────
+
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    setEditImageFiles(files);
+    setEditImagePreviews(files.map((f) => URL.createObjectURL(f)));
+  };
+
+  // ─── Save edited product ───────────────────────────────────────────────────
+
+  const handleEditProductSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editProductId) return;
+    setEditProductError("");
+
+    if (!editProductForm.name.trim()) { setEditProductError("اسم المنتج مطلوب"); return; }
+    if (!editProductForm.price || isNaN(Number(editProductForm.price))) { setEditProductError("السعر مطلوب ويجب أن يكون رقماً"); return; }
+    if (!editProductForm.quantity || isNaN(Number(editProductForm.quantity))) { setEditProductError("الكمية مطلوبة ويجب أن تكون رقماً"); return; }
+
+    setEditProductSaving(true);
+
+    // Upload new images if any
+    const newImageUrls: string[] = [];
+    for (const file of editImageFiles) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `products/${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`;
+      const { data: uploadData, error: uploadError } = await adminSupabase.storage
+        .from("image_url")
+        .upload(path, file, { upsert: false });
+      if (uploadError) {
+        setEditProductError(`فشل رفع الصورة: ${uploadError.message}`);
+        setEditProductSaving(false);
+        return;
+      }
+      const { data: urlData } = adminSupabase.storage.from("image_url").getPublicUrl(uploadData.path);
+      newImageUrls.push(urlData.publicUrl);
+    }
+
+    // Combine existing + new images; main image = the one marked as main
+    const allImages = [...editProductForm.existingImages, ...newImageUrls];
+    const mainImage = allImages[editProductForm.mainImageIndex] ?? allImages[0] ?? null;
+
+    // Sizes for clothing/dresses
+    const sizesArray = editProductForm.sizes.trim()
+      ? editProductForm.sizes.split(",").map((s) => s.trim()).filter(Boolean)
+      : null;
+
+    const updatePayload: Record<string, any> = {
+      name: editProductForm.name.trim(),
+      description: editProductForm.description.trim() || null,
+      category: editProductForm.category,
+      price: Number(editProductForm.price),
+      original_price: editProductForm.original_price
+        ? Number(editProductForm.original_price)
+        : Number(editProductForm.price),
+      quantity: Number(editProductForm.quantity),
+      image_url: mainImage,
+      discount_reason: editProductForm.discount_reason.trim() || null,
+      sizes: sizesArray,
+      brand: editProductForm.brand.trim() || null,
+      is_active: editProductForm.is_active,
+    };
+
+    if (allImages.length > 1) updatePayload.images = allImages;
+
+    if (editProductForm.category === "abayas") {
+      updatePayload.available_sizes = editProductForm.available_sizes.length > 0 ? editProductForm.available_sizes : null;
+      updatePayload.has_abaya_snap_option = editProductForm.has_abaya_snap_option;
+    }
+    if (editProductForm.category === "textiles") {
+      updatePayload.unit = "meter";
+      updatePayload.max_quantity_per_order = Number(editProductForm.max_quantity_per_order) || 12;
+    }
+
+    const { error } = await adminSupabase.from("products").update(updatePayload).eq("id", editProductId);
+
+    if (error) {
+      setEditProductError(`فشل الحفظ: ${error.message}`);
+      setEditProductSaving(false);
+      return;
+    }
+
+    toast({ title: "تم الحفظ", description: "تم تحديث المنتج بنجاح" });
+    setEditProductId(null);
+    setEditProductSaving(false);
     await loadProducts();
   };
 
@@ -773,6 +908,17 @@ export default function AdminSupplierDetail() {
                         </Button>
                       )}
 
+                      {/* Edit product */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs gap-1"
+                        onClick={() => openEditProductModal(p)}
+                      >
+                        <Pencil className="w-3 h-3" />
+                        تعديل المنتج
+                      </Button>
+
                       {/* Toggle active */}
                       <Button
                         size="sm"
@@ -819,6 +965,265 @@ export default function AdminSupplierDetail() {
             <p className="text-muted-foreground text-sm">قريبًا</p>
           </section>
         </main>
+
+        {/* ── Edit Product Modal ── */}
+        {editProductId !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <div className="glass-panel rounded-2xl p-6 max-w-2xl w-full space-y-5 max-h-[92vh] overflow-y-auto">
+              <h3 className="text-lg font-bold">تعديل المنتج</h3>
+              <form onSubmit={handleEditProductSave} className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                  {/* Name */}
+                  <FormField label="اسم المنتج" required className="sm:col-span-2">
+                    <Input
+                      value={editProductForm.name}
+                      onChange={(e) => setEditProductForm((f) => ({ ...f, name: e.target.value }))}
+                      placeholder="فستان كاجوال نسائي"
+                    />
+                  </FormField>
+
+                  {/* Description */}
+                  <FormField label="الوصف" className="sm:col-span-2">
+                    <textarea
+                      value={editProductForm.description}
+                      onChange={(e) => setEditProductForm((f) => ({ ...f, description: e.target.value }))}
+                      placeholder="وصف المنتج..."
+                      rows={2}
+                      className="w-full bg-background/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary resize-none"
+                    />
+                  </FormField>
+
+                  {/* Category */}
+                  <FormField label="الفئة" required>
+                    <select
+                      value={editProductForm.category}
+                      onChange={(e) => setEditProductForm((f) => ({ ...f, category: e.target.value, available_sizes: [], has_abaya_snap_option: false }))}
+                      className="w-full bg-background/50 border border-border rounded-xl px-4 h-11 text-sm focus:outline-none focus:border-primary"
+                    >
+                      {CATEGORIES.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </FormField>
+
+                  {/* Brand */}
+                  <FormField label="الماركة / العلامة التجارية">
+                    <Input
+                      value={editProductForm.brand}
+                      onChange={(e) => setEditProductForm((f) => ({ ...f, brand: e.target.value }))}
+                      placeholder="اختياري"
+                    />
+                  </FormField>
+
+                  {/* Price */}
+                  <FormField label="السعر (ر.س)" required>
+                    <Input
+                      type="number" min="0" step="0.01"
+                      value={editProductForm.price}
+                      onChange={(e) => setEditProductForm((f) => ({ ...f, price: e.target.value }))}
+                      placeholder="150" dir="ltr" className="text-right"
+                    />
+                  </FormField>
+
+                  {/* Original price */}
+                  <FormField label="السعر الأصلي (ر.س)">
+                    <Input
+                      type="number" min="0" step="0.01"
+                      value={editProductForm.original_price}
+                      onChange={(e) => setEditProductForm((f) => ({ ...f, original_price: e.target.value }))}
+                      placeholder="200" dir="ltr" className="text-right"
+                    />
+                  </FormField>
+
+                  {/* Quantity */}
+                  <FormField label={editProductForm.category === "textiles" ? "الكمية المتاحة (متر)" : "الكمية المتاحة"} required>
+                    <Input
+                      type="number" min="0"
+                      value={editProductForm.quantity}
+                      onChange={(e) => setEditProductForm((f) => ({ ...f, quantity: e.target.value }))}
+                      placeholder={editProductForm.category === "textiles" ? "100" : "50"}
+                      dir="ltr" className="text-right"
+                    />
+                  </FormField>
+
+                  {/* Textiles: max_quantity_per_order */}
+                  {editProductForm.category === "textiles" && (
+                    <FormField label="أقصى كمية للطلب (متر)">
+                      <Input
+                        type="number" min="1"
+                        value={editProductForm.max_quantity_per_order}
+                        onChange={(e) => setEditProductForm((f) => ({ ...f, max_quantity_per_order: e.target.value }))}
+                        placeholder="12" dir="ltr" className="text-right"
+                      />
+                    </FormField>
+                  )}
+
+                  {/* Clothing/Dresses: sizes */}
+                  {(editProductForm.category === "clothing" || editProductForm.category === "dresses") && (
+                    <FormField label="المقاسات (مفصولة بفاصلة)">
+                      <Input
+                        value={editProductForm.sizes}
+                        onChange={(e) => setEditProductForm((f) => ({ ...f, sizes: e.target.value }))}
+                        placeholder="S, M, L, XL"
+                        dir="ltr" className="text-right"
+                      />
+                    </FormField>
+                  )}
+
+                  {/* Abayas: sizes + snap */}
+                  {editProductForm.category === "abayas" && (
+                    <>
+                      <FormField label="المقاسات المتاحة (عبايات)" className="sm:col-span-2">
+                        <div className="flex flex-wrap gap-3 mt-1">
+                          {ABAYA_SIZES.map((size) => (
+                            <label key={size} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={editProductForm.available_sizes.includes(size)}
+                                onChange={(e) => {
+                                  setEditProductForm((f) => ({
+                                    ...f,
+                                    available_sizes: e.target.checked
+                                      ? [...f.available_sizes, size]
+                                      : f.available_sizes.filter((s) => s !== size),
+                                  }));
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm font-medium">{size}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </FormField>
+                      <FormField label="خيار طقطاق العباية" className="sm:col-span-2">
+                        <label className="flex items-center gap-3 cursor-pointer h-11">
+                          <input
+                            type="checkbox"
+                            checked={editProductForm.has_abaya_snap_option}
+                            onChange={(e) => setEditProductForm((f) => ({ ...f, has_abaya_snap_option: e.target.checked }))}
+                            className="w-5 h-5"
+                          />
+                          <span className="text-sm">إتاحة خيار إضافة الطقطاق للمشتري</span>
+                        </label>
+                      </FormField>
+                    </>
+                  )}
+
+                  {/* Discount reason */}
+                  <FormField label="سبب الخصم" className="sm:col-span-2">
+                    <Input
+                      value={editProductForm.discount_reason}
+                      onChange={(e) => setEditProductForm((f) => ({ ...f, discount_reason: e.target.value }))}
+                      placeholder="تصفية موسمية، عينة..."
+                    />
+                  </FormField>
+
+                  {/* Existing images */}
+                  {editProductForm.existingImages.length > 0 && (
+                    <FormField label="الصور الحالية" className="sm:col-span-2">
+                      <div className="flex flex-wrap gap-2">
+                        {editProductForm.existingImages.map((src, idx) => (
+                          <div key={idx} className="relative group">
+                            <img
+                              src={src}
+                              alt={`صورة ${idx + 1}`}
+                              className={`w-20 h-20 rounded-xl object-cover border-2 cursor-pointer transition-all ${
+                                editProductForm.mainImageIndex === idx
+                                  ? "border-primary"
+                                  : "border-border hover:border-primary/50"
+                              }`}
+                              onClick={() => setEditProductForm((f) => ({ ...f, mainImageIndex: idx }))}
+                              title="انقر لتعيينها صورة رئيسية"
+                            />
+                            {editProductForm.mainImageIndex === idx && (
+                              <span className="absolute bottom-0 right-0 bg-primary text-primary-foreground text-[10px] px-1 rounded-tl-lg font-bold">
+                                رئيسية
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = editProductForm.existingImages.filter((_, i) => i !== idx);
+                                setEditProductForm((f) => ({
+                                  ...f,
+                                  existingImages: updated,
+                                  mainImageIndex: Math.min(f.mainImageIndex, Math.max(0, updated.length - 1)),
+                                }));
+                              }}
+                              className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-destructive text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="إزالة الصورة"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">انقر على الصورة لتعيينها كالصورة الرئيسية. X لإزالتها.</p>
+                    </FormField>
+                  )}
+
+                  {/* New images upload */}
+                  <FormField label="إضافة صور جديدة" className="sm:col-span-2">
+                    <div className="space-y-2">
+                      {editImagePreviews.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {editImagePreviews.map((src, idx) => (
+                            <img
+                              key={idx}
+                              src={src}
+                              alt={`جديدة ${idx + 1}`}
+                              className="w-20 h-20 rounded-xl object-cover border border-border opacity-80"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <input
+                        ref={editFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleEditImageChange}
+                        className="block w-full text-sm text-muted-foreground file:ml-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary/10 file:text-primary file:font-medium hover:file:bg-primary/20 cursor-pointer"
+                      />
+                      <p className="text-xs text-muted-foreground">PNG, JPG, WEBP — الصور الجديدة ستُضاف بعد الحاليات.</p>
+                    </div>
+                  </FormField>
+
+                  {/* is_active */}
+                  <FormField label="الحالة" className="sm:col-span-2">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editProductForm.is_active}
+                        onChange={(e) => setEditProductForm((f) => ({ ...f, is_active: e.target.checked }))}
+                        className="w-5 h-5 rounded"
+                      />
+                      <span className="text-sm">منتج نشط (مرئي للمشترين)</span>
+                    </label>
+                  </FormField>
+                </div>
+
+                {editProductError && <p className="text-destructive text-sm">{editProductError}</p>}
+
+                <div className="flex gap-3 pt-2">
+                  <Button type="submit" disabled={editProductSaving} className="flex-1">
+                    {editProductSaving ? "جاري الحفظ..." : "حفظ التعديلات"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="flex-1"
+                    disabled={editProductSaving}
+                    onClick={() => setEditProductId(null)}
+                  >
+                    إلغاء
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* ── Delete Product Modal ── */}
         {deleteProductConfirm !== null && (
